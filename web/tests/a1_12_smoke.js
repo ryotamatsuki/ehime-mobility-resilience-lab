@@ -9,9 +9,7 @@ for (const name of ["index.html", "app.js", "a1_12.css"]) {
 const html = fs.readFileSync(path.join(target, "index.html"), "utf8");
 const app = fs.readFileSync(path.join(target, "app.js"), "utf8");
 const css = fs.readFileSync(path.join(target, "a1_12.css"), "utf8");
-for (const marker of ["equity", "75", "85"]) {
-  if (!(html + app + css).toLowerCase().includes(marker.toLowerCase())) throw new Error("missing A1.12 marker: " + marker);
-}
+if (!css.toLowerCase().includes("equity")) throw new Error("missing A1.12 equity CSS contract");
 for (const forbidden of ["nominatim", "google.maps", "mapboxgl", "vulnerability_score", "compositeScore"]) {
   if ((app + html).toLowerCase().includes(forbidden.toLowerCase())) throw new Error("A1.12 forbidden marker: " + forbidden);
 }
@@ -47,7 +45,7 @@ if (fs.existsSync(equityPath)) {
   for (const capability of ["vulnerable-population-65plus", "vulnerable-population-75plus", "vulnerable-population-85plus", "equity-gap-metrics", "equity-public-geojson", "current-official-age-context"]) {
     if (!manifest.ui_capabilities.includes(capability)) throw new Error("missing capability " + capability);
   }
-  if (!html.includes('data-ui-stage="A1.12"') || !html.includes("VULNERABLE POPULATION / EQUITY")) throw new Error("A1.12 generated UI missing");
+  if (!html.includes('data-ui-stage="A1.12"') || !html.includes("VULNERABLE POPULATION / EQUITY") || !html.includes("75歳以上") || !html.includes("85歳以上")) throw new Error("A1.12 generated UI missing");
   if (!app.includes('"A1.12"')) throw new Error("app does not accept A1.12");
 }
 console.log("A1.12 vulnerable-population/equity smoke passed for " + target);
