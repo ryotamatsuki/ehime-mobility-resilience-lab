@@ -100,6 +100,7 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "A1_1_MINIMAL_ACCESSIBILITY.md",
         "A1_1_QA_REPORT.md",
         "A1_2_WEBGIS_DEMO.md",
+        "A1_2_QA_REPORT.md",
         "DATA_LICENSES.md",
     ):
         src = ROOT / "docs" / name
