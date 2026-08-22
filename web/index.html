@@ -3,148 +3,269 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較するWebGIS">
-  <title>Ehime Mobility Resilience Lab — A1.2</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <meta name="description" content="実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較する交通レジリエンス・プランニングキャンバス">
+  <title>Ehime Mobility Resilience Lab — Planning Canvas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <div>
-      <p class="eyebrow">EHIME MOBILITY RESILIENCE LAB / A1.2</p>
-      <h1>もし、このバスが止まったら。</h1>
-      <p class="lead">実際のGTFS、OSM徒歩道路、人口メッシュを使い、平常時と路線停止時の病院アクセスを比較する最小Stress Test。</p>
+  <a class="skip-link" href="#map">地図へ移動</a>
+
+  <header class="topbar">
+    <div class="brand-block">
+      <div class="brand-mark" aria-hidden="true">E</div>
+      <div>
+        <div class="brand-title">Ehime Mobility Resilience Lab</div>
+        <div class="brand-subtitle">交通レジリエンス・プランニングキャンバス</div>
+      </div>
     </div>
-    <div class="status-stack" aria-label="プロダクト状態">
-      <span class="status status-warn">実被害予測ではありません</span>
-      <span class="status status-ok" id="data-status">実データ成果物を確認中</span>
+    <div class="top-actions" aria-label="ユーティリティ">
+      <button class="icon-action" type="button" id="data-info-action" title="データ情報">↻ <span>データ情報</span></button>
+      <button class="icon-action" type="button" id="share-action" title="共有">⌯ <span>共有</span></button>
+      <button class="icon-action" type="button" id="print-action" title="レポート出力">⇩ <span>レポート出力</span></button>
+      <button class="icon-action" type="button" id="settings-action" title="分析条件">⚙ <span>分析条件</span></button>
+      <button class="icon-action" type="button" id="help-action" title="ヘルプ">? <span>ヘルプ</span></button>
     </div>
   </header>
 
-  <main class="app-shell">
-    <nav class="step-nav" aria-label="分析の流れ">
-      <span class="active">1 平常時を見る</span>
-      <span>2 バスを止めてみる</span>
-      <span>3 影響を見る</span>
-    </nav>
+  <section class="scenario-ribbon" aria-label="シナリオ一覧">
+    <div class="ribbon-label">シナリオ選択</div>
+    <button class="scenario-tab active" type="button" data-scenario="baseline">
+      <strong>Baseline</strong><span>平常時</span>
+    </button>
+    <button class="scenario-tab scenario-a" type="button" data-scenario="disrupted">
+      <strong>Scenario A</strong><span>右回り運休</span>
+    </button>
+    <button class="scenario-tab future" type="button" disabled title="道路閉鎖モデル実装後に利用可能">
+      <strong>Scenario B</strong><span>道路停止 — 未計算</span>
+    </button>
+    <button class="scenario-tab future" type="button" disabled title="複合シナリオ実装後に利用可能">
+      <strong>Scenario C</strong><span>A + B — 未計算</span>
+    </button>
+    <button class="scenario-tab recovery-tab" type="button" id="recovery-tab">
+      <strong>Recovery</strong><span>右回りを復旧</span>
+    </button>
+    <button class="scenario-new" type="button" disabled title="Scenario Save実装後に利用可能">＋ 新規シナリオ</button>
+    <div class="analysis-meta" aria-label="分析メタデータ">
+      <span>分析日時 <strong id="meta-analysis-date">—</strong></span>
+      <span>モデル <strong id="meta-model-version">—</strong></span>
+      <span>GTFS <strong id="meta-feed-version">—</strong></span>
+    </div>
+  </section>
 
-    <section class="control-grid" aria-label="Scenario Builder">
-      <div class="panel scenario-panel">
-        <div class="panel-heading">
-          <div>
-            <p class="kicker">Scenario</p>
-            <h2>平常時と停止時を切り替える</h2>
-          </div>
-          <span class="classification classification-d">D 仮定</span>
+  <main class="planning-canvas">
+    <aside class="builder-pane" aria-label="シナリオビルダー">
+      <div class="pane-title-row">
+        <div>
+          <p class="pane-kicker">SCENARIO BUILDER</p>
+          <h1>何を止めますか？</h1>
+          <p>地図またはリストから交通機能を選び、影響を比較します。</p>
         </div>
-        <div class="scenario-switch" role="group" aria-label="シナリオ選択">
-          <button type="button" class="scenario-button active" data-scenario="baseline">平常時</button>
-          <button type="button" class="scenario-button" data-scenario="disrupted">右回り停止</button>
-        </div>
-        <p id="scenario-description" class="muted">2026年8月21日 08:00出発。ぐるりんおおず全路線が利用できる平常時を表示します。</p>
-        <div id="selection-note" class="selection-note" role="status">人口メッシュをクリックすると、病院までの所要時間Before / Afterを確認できます。</div>
+        <span class="help-dot" title="現在はA1.1で検証済みの右回り運休だけを計算できます">?</span>
       </div>
 
-      <div class="panel mode-panel">
-        <div class="panel-heading">
-          <div>
-            <p class="kicker">Layers</p>
-            <h2>表示するデータ</h2>
-          </div>
-          <span class="classification classification-b">A / B / C</span>
+      <section class="builder-section future-section">
+        <div class="section-heading"><h2>道路ネットワーク</h2><span class="section-status muted-status">A3で実装</span></div>
+        <label class="builder-option disabled-option"><input type="checkbox" disabled><span class="option-icon road-icon">━</span><span class="option-body"><strong>道路区間を選択</strong><small>通行止め・容量低下・速度低下</small></span><span class="pill neutral">未計算</span></label>
+        <label class="builder-option disabled-option"><input type="checkbox" disabled><span class="option-icon road-icon">%</span><span class="option-body"><strong>道路容量を変更</strong><small>Traffic Assignment実装後</small></span><span class="pill neutral">未計算</span></label>
+      </section>
+
+      <section class="builder-section">
+        <div class="section-heading"><h2>公共交通（GTFS）</h2><span class="section-status" id="selected-transit-count">選択中 0系統</span></div>
+        <label class="builder-option active-option" id="clockwise-option">
+          <input type="checkbox" id="clockwise-toggle">
+          <span class="option-icon bus-icon">▣</span>
+          <span class="option-body"><strong id="clockwise-label">ぐるりんおおず 右回り</strong><small id="clockwise-route-ids">route 11 / 21</small></span>
+          <span class="pill danger">運休</span>
+        </label>
+        <label class="builder-option disabled-option"><input type="checkbox" disabled><span class="option-icon bus-icon">▣</span><span class="option-body"><strong>左回り・その他路線</strong><small>追加シナリオは未計算</small></span><span class="pill neutral">未計算</span></label>
+      </section>
+
+      <section class="builder-section future-section">
+        <div class="section-heading"><h2>鉄道・航路・港湾</h2><span class="section-status muted-status">将来Stage</span></div>
+        <label class="builder-option disabled-option"><input type="checkbox" disabled><span class="option-icon">◇</span><span class="option-body"><strong>鉄道区間</strong><small>利用可能データ確定後</small></span><span class="pill neutral">未計算</span></label>
+        <label class="builder-option disabled-option"><input type="checkbox" disabled><span class="option-icon">≈</span><span class="option-body"><strong>航路・港湾</strong><small>GTFS・港湾データ統合後</small></span><span class="pill neutral">未計算</span></label>
+      </section>
+
+      <section class="builder-section assumptions" id="assumptions-panel" hidden>
+        <div class="section-heading"><h2>分析条件</h2><span class="classification classification-c">C</span></div>
+        <dl class="assumption-list">
+          <div><dt>出発時刻</dt><dd id="assumption-time">08:00</dd></div>
+          <div><dt>徒歩速度</dt><dd>4.8 km/h</dd></div>
+          <div><dt>目的地</dt><dd>病院</dd></div>
+          <div><dt>分析範囲</dt><dd>GTFS停留所bbox周辺</dd></div>
+        </dl>
+      </section>
+
+      <div class="builder-actions">
+        <button type="button" class="primary-action" id="run-analysis">この条件で分析表示</button>
+        <button type="button" class="secondary-action" id="reset-analysis">リセット</button>
+      </div>
+      <div class="builder-note" id="selection-note" role="status">Baselineを表示しています。右回りを選ぶと、検証済みの停止シナリオへ切り替えます。</div>
+    </aside>
+
+    <section class="map-pane" aria-label="地図分析">
+      <div class="map-toolbar floating-toolbar">
+        <div class="map-style-buttons" role="group" aria-label="地図スタイル">
+          <button class="map-style active" type="button">地図</button>
+          <button class="map-style" type="button" disabled title="将来対応">航空写真</button>
+          <button class="map-style" type="button" disabled title="将来対応">地形</button>
         </div>
-        <div class="layer-controls">
-          <label><input type="checkbox" data-layer="population" checked> 人口・Accessibility</label>
-          <label><input type="checkbox" data-layer="routes" checked> GTFS路線</label>
-          <label><input type="checkbox" data-layer="stops" checked> 停留所</label>
-          <label><input type="checkbox" data-layer="facilities" checked> 病院</label>
-        </div>
-        <div id="mode-summary" class="mode-summary">対象は大洲市「ぐるりんおおず」の停留所範囲周辺です。愛媛県全域の結果ではありません。</div>
+        <label class="difference-toggle"><input type="checkbox" id="difference-toggle"> 差分を表示</label>
+      </div>
+
+      <div class="map-scale-card" aria-live="polite">
+        <div class="scale-title" id="map-scale-title">病院までの所要時間（分）</div>
+        <div class="gradient-scale baseline-scale" id="baseline-scale"></div>
+        <div class="gradient-scale delta-scale" id="delta-scale" hidden></div>
+        <div class="scale-labels" id="scale-labels"><span>≤30</span><span>≤60</span><span>≤90</span><span>&gt;90</span></div>
+      </div>
+
+      <div id="map" role="application" aria-label="大洲市交通レジリエンス分析地図">
+        <div class="map-loading">実計算成果物を読み込んでいます…</div>
+      </div>
+
+      <div class="map-legend-card">
+        <strong>凡例</strong>
+        <span><i class="legend-line route-line"></i>GTFS路線</span>
+        <span><i class="legend-line stopped-line"></i>停止対象</span>
+        <span><i class="legend-dot stop-dot"></i>停留所</span>
+        <span><i class="legend-dot hospital-dot"></i>病院</span>
+        <span><i class="legend-dot population-dot"></i>人口メッシュ</span>
+        <small>人口点の色は所要時間または差分を示します。</small>
+      </div>
+
+      <div class="map-status-strip">
+        <span class="classification classification-a">A GTFS</span>
+        <span class="classification classification-b">B 人口・OSM</span>
+        <span class="classification classification-c">C Accessibility</span>
+        <span class="classification classification-d">D 停止仮定</span>
+        <span id="map-coverage">大洲市 ぐるりんおおず停留所範囲周辺</span>
       </div>
     </section>
 
-    <section class="map-layout">
-      <div class="panel map-panel">
-        <div class="map-toolbar">
-          <div>
-            <p class="kicker">Ozu / Real-data vertical slice</p>
-            <h2 id="map-title">病院Accessibility — 平常時</h2>
-          </div>
-          <div class="legend" aria-label="地図の凡例">
-            <span><i class="legend-line transit"></i>運行路線</span>
-            <span><i class="legend-line stopped"></i>停止対象路線</span>
-            <span><i class="legend-dot hospital"></i>病院</span>
-            <span><i class="legend-dot affected"></i>所要時間増</span>
-          </div>
+    <aside class="impact-pane" aria-label="影響分析">
+      <div class="impact-tabs" role="tablist">
+        <button class="impact-tab active" type="button" data-panel="summary-panel">影響サマリー</button>
+        <button class="impact-tab" type="button" data-panel="detail-panel">詳細分析</button>
+        <button class="impact-tab" type="button" data-panel="report-panel">レポート</button>
+      </div>
+
+      <div class="impact-panel active" id="summary-panel">
+        <p class="pane-kicker">SCENARIO IMPACT</p>
+        <h2 id="impact-heading">平常時（Baseline）</h2>
+        <div class="hero-metric">
+          <span>1分超の所要時間悪化人口</span>
+          <strong id="affected-population">0人</strong>
+          <small id="affected-share">対象人口の0%</small>
         </div>
-        <div id="map" role="application" aria-label="大洲市公共交通アクセシビリティ地図">
-          <div class="map-loading">実計算成果物を読み込んでいます…</div>
+        <div class="two-metric-row">
+          <div class="mini-metric"><span>60分以内到達</span><strong id="reachable-60">—</strong><small>人相当</small></div>
+          <div class="mini-metric success"><span>60分以内到達不能化</span><strong id="unreachable-loss">0</strong><small>人相当</small></div>
         </div>
-        <div class="map-caption">
-          A：大洲市GTFS / B：簡易100m人口・OSM / C：Accessibilityモデル / D：右回り路線停止の仮定。人口点は100mセルの簡易按分値です。
+        <div class="severity-grid">
+          <div><span>+1分以上</span><strong id="impact-1">—</strong></div>
+          <div><span>+5分以上</span><strong id="impact-5">—</strong></div>
+          <div><span>+10分以上</span><strong id="impact-10">—</strong></div>
+        </div>
+        <div class="mean-time-card">
+          <span>人口加重平均 病院アクセス時間</span>
+          <div><strong id="mean-before">—</strong><b>→</b><strong id="mean-after">—</strong><em id="mean-delta">—</em></div>
+        </div>
+        <div class="rank-section">
+          <div class="rank-heading"><h3>最も影響が大きい地域</h3><button type="button" class="text-button" id="fit-affected">地図で確認</button></div>
+          <ol class="impact-ranking" id="critical-list"></ol>
+        </div>
+        <div class="rank-section">
+          <div class="rank-heading"><h3>病院・停留所</h3><span class="muted-inline">実データ</span></div>
+          <div class="network-counts"><span><strong id="stop-count">—</strong>停留所</span><span><strong id="hospital-count">—</strong>病院</span><span><strong id="route-count">—</strong>route</span></div>
         </div>
       </div>
 
-      <aside class="panel insight-panel" aria-live="polite">
-        <div class="panel-heading">
-          <div>
-            <p class="kicker">What changes?</p>
-            <h2>病院アクセスへの影響</h2>
-          </div>
-          <span id="result-state" class="status status-ok">計算済み</span>
+      <div class="impact-panel" id="detail-panel" hidden>
+        <p class="pane-kicker">DETAIL</p>
+        <h2>選択メッシュのBefore / After</h2>
+        <div class="selected-zone-card" id="selected-zone-card">
+          <strong>地図上の人口メッシュを選択してください</strong>
+          <p>人口、平常時所要時間、停止時所要時間、差分を表示します。</p>
         </div>
-        <div id="metric-grid" class="metric-grid"></div>
-        <div class="comparison">
-          <div class="comparison-header"><span>平均所要時間 Before</span><span>After</span></div>
-          <div class="comparison-bar"><span id="before-bar"></span><span id="after-bar"></span></div>
-          <div id="comparison-text" class="comparison-text"></div>
-        </div>
-        <div class="insight-callout">
-          <strong id="insight-title">閾値だけでは見えない影響を見る</strong>
-          <p id="insight-body">30分・60分圏人口が変わらなくても、個別メッシュでは所要時間が増える場合があります。</p>
-        </div>
-      </aside>
-    </section>
-
-    <section class="detail-grid">
-      <div class="panel">
-        <div class="panel-heading"><h2>影響が大きい地域</h2><span class="classification classification-c">C 推計</span></div>
-        <ol id="critical-list" class="critical-list"></ol>
+        <h3>指標の読み方</h3>
+        <ul class="plain-list">
+          <li>到達圏人口だけでなく連続的な所要時間悪化も評価します。</li>
+          <li>人口は令和2年簡易100mメッシュの按分値です。</li>
+          <li>停止条件はD区分のStress Testであり、実被害予測ではありません。</li>
+        </ul>
       </div>
 
-      <div class="panel">
-        <div class="panel-heading"><h2>今回止めたもの</h2><span class="classification classification-d">D 仮定</span></div>
-        <p id="recovery-copy">右回り系統だけを停止する感度分析です。地震・豪雨等による実際の運休を予測したものではありません。</p>
-        <button id="recover" class="button button-primary" type="button">平常時へ戻す</button>
-      </div>
-
-      <div class="panel provenance-panel">
-        <div class="panel-heading"><h2>根拠を確認</h2><span class="classification classification-a">Provenance</span></div>
-        <details open>
-          <summary>使用データ・モデル・計算条件</summary>
-          <pre id="provenance"></pre>
-        </details>
+      <div class="impact-panel" id="report-panel" hidden>
+        <p class="pane-kicker">REPORT / PROVENANCE</p>
+        <h2>根拠と制約</h2>
+        <details open><summary>使用データ・モデル・条件</summary><pre id="provenance"></pre></details>
         <div id="limitations" class="limitations"></div>
+        <button type="button" class="primary-action compact" id="report-print">この画面を印刷</button>
       </div>
-    </section>
+    </aside>
 
-    <section class="panel next-stage">
-      <div class="panel-heading">
-        <div><p class="kicker">Next Gate</p><h2>A1.2ではここまで</h2></div>
-        <span class="status status-warn">範囲を拡大しない</span>
-      </div>
-      <p>道路閉鎖、Synthetic OD、交通量配分、物流、全県GTFS統合はこの画面では未計算です。次Stageで独立にGateを通して追加します。</p>
+    <section class="analytics-row" aria-label="比較分析">
+      <article class="analytics-card before-after-card">
+        <div class="card-heading">
+          <div><p class="pane-kicker">BEFORE / AFTER</p><h2>空間的な変化</h2></div>
+          <select id="comparison-metric" aria-label="比較指標"><option value="travel-time">病院までの所要時間</option><option value="delta">所要時間差分</option></select>
+        </div>
+        <div class="mini-map-grid">
+          <figure><figcaption>平常時（Baseline）</figcaption><svg id="mini-map-before" viewBox="0 0 180 120" role="img" aria-label="平常時の簡易分布図"></svg></figure>
+          <div class="math-symbol">−</div>
+          <figure><figcaption>差分</figcaption><svg id="mini-map-delta" viewBox="0 0 180 120" role="img" aria-label="差分の簡易分布図"></svg></figure>
+          <div class="math-symbol">=</div>
+          <figure><figcaption>Scenario A</figcaption><svg id="mini-map-after" viewBox="0 0 180 120" role="img" aria-label="停止後の簡易分布図"></svg></figure>
+        </div>
+        <p class="chart-note">各点は100m人口メッシュの中心。色は同じ分析結果から生成しています。</p>
+      </article>
+
+      <article class="analytics-card distribution-card">
+        <div class="card-heading"><div><p class="pane-kicker">DISTRIBUTION</p><h2>所要時間の人口加重分布</h2></div><span class="classification classification-c">C 推計</span></div>
+        <svg id="distribution-chart" viewBox="0 0 520 230" role="img" aria-label="所要時間の累積人口分布"></svg>
+        <div class="chart-legend"><span><i class="chart-line baseline-chart"></i>平常時</span><span><i class="chart-line disrupted-chart"></i>Scenario A</span></div>
+      </article>
+
+      <article class="analytics-card recovery-card">
+        <div class="card-heading"><div><p class="pane-kicker">RECOVERY</p><h2>復旧効果シミュレーション</h2></div><span class="classification classification-d">D 仮定</span></div>
+        <p class="recovery-description">現在検証済みの復旧操作は「右回り系統を復旧」の1種類です。未計算の道路・鉄道候補は表示しません。</p>
+        <label class="recovery-option"><input type="checkbox" id="recovery-toggle"><span><strong>ぐるりんおおず 右回りを復旧</strong><small id="recovery-benefit">—</small></span></label>
+        <div class="recovery-bars">
+          <div><span>停止時</span><div class="bar-track"><i id="recovery-before-bar"></i></div><strong id="recovery-before-value">—</strong></div>
+          <div><span>復旧後</span><div class="bar-track"><i id="recovery-after-bar"></i></div><strong id="recovery-after-value">—</strong></div>
+        </div>
+        <button type="button" class="secondary-action compact" id="apply-recovery">復旧状態を地図に反映</button>
+      </article>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <p><strong>分類：</strong>A 公式データ / B 公式統計等に基づく加工・OSM / C モデル推計 / D ユーザー仮定</p>
-    <p>出典：大洲市「ぐるりんおおず」GTFS、地域・交通データ研究所 令和2年簡易100mメッシュ人口、OpenStreetMap。<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · <a href="docs/A1_1_MINIMAL_ACCESSIBILITY.md">分析仕様</a> · <a href="docs/A1_1_QA_REPORT.md">QA</a> · <a href="docs/DATA_LICENSES.md">ライセンス</a></p>
+  <footer class="data-footer" id="data-footer">
+    <strong>データ情報</strong>
+    <span>人口：令和2年簡易100mメッシュ（B）</span>
+    <span>GTFS：大洲市「ぐるりんおおず」（A）</span>
+    <span>道路・病院：OpenStreetMap（B）</span>
+    <span id="footer-model">Model: —</span>
+    <span id="footer-git">Git: —</span>
+    <a href="docs/DATA_LICENSES.md">出典・ライセンス</a>
   </footer>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <dialog id="help-dialog">
+    <form method="dialog" class="dialog-card">
+      <button class="dialog-close" value="close" aria-label="閉じる">×</button>
+      <p class="pane-kicker">HOW TO USE</p>
+      <h2>3ステップで比較します</h2>
+      <ol>
+        <li><strong>Baseline</strong>で平常時を確認。</li>
+        <li><strong>Scenario A</strong>または左側の右回り運休を選択。</li>
+        <li>地図・影響サマリー・下段グラフでBefore / Afterを確認。</li>
+      </ol>
+      <p>現在のUIで操作可能なのはA1.1で実計算済みのシナリオだけです。道路閉鎖、Synthetic OD、Traffic Assignment等は各StageのRelease Gate通過後に追加します。</p>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>
