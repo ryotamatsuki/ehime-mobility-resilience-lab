@@ -96,7 +96,12 @@ def build(source: Path, web: Path, destination: Path) -> dict:
 
     docs_out = destination / "docs"
     docs_out.mkdir(exist_ok=True)
-    for name in ("A1_1_MINIMAL_ACCESSIBILITY.md", "A1_1_QA_REPORT.md", "DATA_LICENSES.md"):
+    for name in (
+        "A1_1_MINIMAL_ACCESSIBILITY.md",
+        "A1_1_QA_REPORT.md",
+        "A1_2_WEBGIS_DEMO.md",
+        "DATA_LICENSES.md",
+    ):
         src = ROOT / "docs" / name
         if src.exists():
             shutil.copy2(src, docs_out / name)
