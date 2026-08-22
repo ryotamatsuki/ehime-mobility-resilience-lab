@@ -25,6 +25,7 @@ SHELTER_SHEETS = {
     "指定一般避難所": "general",
     "指定福祉避難所": "welfare",
 }
+PARENT_FEATURE_SUFFIXES = ("運動場", "グラウンド", "校庭")
 
 
 def _column_index(reference: str) -> int:
@@ -191,7 +192,6 @@ def osm_named_candidates(overpass: dict[str, Any]) -> list[dict[str, Any]]:
         name = tags.get("name") or tags.get("name:ja")
         if not name:
             continue
-        # Roads and ordinary commercial POIs are intentionally excluded.
         relevant = bool(
             tags.get("amenity")
             or tags.get("leisure")
@@ -265,6 +265,20 @@ def _match_score(record: dict[str, Any], candidate: dict[str, Any]) -> tuple[flo
     return score, method
 
 
+def _match_quality(record: dict[str, Any], candidate: dict[str, Any], method: str) -> str:
+    official = normalize_shelter_name(str(record.get("name", "")))
+    osm = normalize_shelter_name(str(candidate.get("name", "")))
+    for suffix in PARENT_FEATURE_SUFFIXES:
+        normalized_suffix = normalize_shelter_name(suffix)
+        if official.endswith(normalized_suffix):
+            parent = official[: -len(normalized_suffix)]
+            if parent and (parent == osm or parent in osm or osm in parent):
+                return "parent_feature"
+    if method.startswith("exact_name"):
+        return "exact"
+    return "name_equivalent"
+
+
 def match_official_shelters(
     official: dict[str, list[dict[str, Any]]],
     candidates: list[dict[str, Any]],
@@ -280,6 +294,7 @@ def match_official_shelters(
     for kind, records in official.items():
         unmatched = 0
         ambiguous = 0
+        quality_counts = {"exact": 0, "name_equivalent": 0, "parent_feature": 0}
         for record in records:
             scored: list[tuple[float, str, dict[str, Any]]] = []
             for candidate in candidates:
@@ -296,6 +311,7 @@ def match_official_shelters(
                 ambiguous += 1
                 continue
             score, method, candidate = scored[0]
+            quality = _match_quality(record, candidate, method)
             item = dict(record)
             item.update(
                 {
@@ -306,16 +322,19 @@ def match_official_shelters(
                     "osm_name": candidate["name"],
                     "location_match_score": round(score, 4),
                     "location_match_method": method,
+                    "location_match_quality": quality,
                     "location_source": "OpenStreetMap",
                 }
             )
             matched[kind].append(item)
+            quality_counts[quality] += 1
             used_candidates.add(candidate["id"])
         stats["by_kind"][kind] = {
             "official_records": len(records),
             "matched_records": len(matched[kind]),
             "unmatched_records": unmatched,
             "ambiguous_records": ambiguous,
+            "match_quality": quality_counts,
         }
 
     stats["official_records"] = sum(len(records) for records in official.values())
