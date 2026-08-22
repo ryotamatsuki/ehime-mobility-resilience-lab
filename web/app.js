@@ -48,7 +48,7 @@
     if (state.scenario === "disrupted" && stopped) {
       return { color: "#b42318", weight: 5, opacity: 0.8, dashArray: "8 6" };
     }
-    return { color: stopped ? "#7c3aed" : "#175cd3", weight: stopped ? 4 : 3, opacity: 0.82 };
+    return { color: "#175cd3", weight: 3, opacity: 0.82 };
   }
 
   function accessColor(properties) {
@@ -189,7 +189,7 @@
       get("critical-list").innerHTML = "<li>1分未満の変化のみです。</li>";
       return;
     }
-    get("critical-list").innerHTML = features.map(function (feature, index) {
+    get("critical-list").innerHTML = features.map(function (feature) {
       var p = feature.properties || {};
       return '<li><button type="button" data-zone="' + escapeHtml(p.zone_id) + '">メッシュ ' + escapeHtml(p.zone_id) + '</button><br><span class="muted">' + number(p.population, 1) + '人相当 / +' + number(p.delta_minutes, 1) + '分</span></li>';
     }).join("");
