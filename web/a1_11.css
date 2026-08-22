@@ -1,0 +1,31 @@
+/* A1.11 time-dependent criticality. */
+.time-criticality-card { grid-column: 1 / -1; }
+.time-criticality-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 10px 0 12px; }
+.time-criticality-kpi { min-height: 82px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; }
+.time-criticality-kpi span { display: block; color: var(--muted); font-size: .65rem; font-weight: 750; }
+.time-criticality-kpi strong { display: block; margin-top: 4px; color: var(--navy-2); font-size: 1rem; }
+.time-criticality-kpi small { display: block; margin-top: 2px; color: #667085; font-size: .6rem; }
+.time-criticality-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.time-criticality-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: .64rem; }
+.time-criticality-table th, .time-criticality-table td { padding: 7px 8px; border-bottom: 1px solid #edf0f4; text-align: left; vertical-align: middle; }
+.time-criticality-table th { position: sticky; top: 0; z-index: 2; color: #475467; background: #f8fafc; font-size: .59rem; letter-spacing: .02em; }
+.time-criticality-table tbody tr:last-child td { border-bottom: 0; }
+.time-criticality-table tbody tr:hover { background: #f7faff; }
+.time-criticality-time { font-weight: 900; color: #173b70; white-space: nowrap; }
+.time-criticality-service { max-width: 230px; font-weight: 750; color: #344054; }
+.time-criticality-impact { min-width: 140px; }
+.time-criticality-bar { height: 7px; margin-top: 3px; overflow: hidden; border-radius: 999px; background: #edf1f6; }
+.time-criticality-bar > i { display: block; height: 100%; width: var(--impact-width, 0%); border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #b42318); }
+.time-criticality-zero { color: #98a2b3; }
+.time-criticality-note { margin: 8px 0 0; color: #667085; font-size: .61rem; }
+
+@media screen and (max-width: 900px), screen and (max-device-width: 900px), (hover: none) and (pointer: coarse) {
+  .time-criticality-kpis { grid-template-columns: 1fr; }
+  .time-criticality-kpi { min-height: 70px; }
+  .time-criticality-kpi span { font-size: .75rem; }
+  .time-criticality-kpi strong { font-size: 1.05rem; }
+  .time-criticality-kpi small { font-size: .7rem; }
+  .time-criticality-table { font-size: .74rem; }
+  .time-criticality-table th { font-size: .68rem; }
+  .time-criticality-note { font-size: .72rem; line-height: 1.5; }
+}
