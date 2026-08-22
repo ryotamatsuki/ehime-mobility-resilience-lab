@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-5-official-hospital-gate]
+    branches: [main, feature/a1-6-stop-walking-transfer]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -81,42 +81,56 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Build A1.5 real-data accessibility with official hospital gate
+      - name: Build A1.6 real-data accessibility with walking transfers
         run: |
           for attempt in 1 2 3; do
-            if PYTHONPATH=src python scripts/build_network/build_a1_5.py --output outputs/a1_5; then break; fi
+            if PYTHONPATH=src python scripts/build_network/build_a1_6.py --output outputs/a1_6; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-      - name: Validate A1.5 result contract
+      - name: Validate A1.6 result contract
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          result = json.loads(Path('outputs/a1_5/summary.json').read_text())
-          facilities = json.loads(Path('outputs/a1_5/facilities.geojson').read_text())
-          assert result['stage'] == 'A1.5'
+          result = json.loads(Path('outputs/a1_6/summary.json').read_text())
+          facilities = json.loads(Path('outputs/a1_6/facilities.geojson').read_text())
+          population = json.loads(Path('outputs/a1_6/population_access.geojson').read_text())
+          assert result['stage'] == 'A1.6'
           assert result['status'] == 'computed'
           assert result['classification'] == 'C'
           assert result['scenario_classification'] == 'D'
           assert result['gtfs']['snapped_stops'] == result['gtfs']['stops']
           assert result['official_registry']['verified_osm_hospitals'] >= 1
+          assert result['official_registry']['official_records_without_osm_match'] == 0
           assert result['official_registry']['raw_workbook_published'] is False
           assert result['official_registry']['official_attributes_in_public_geojson'] is False
           assert result['osm']['hospital_destinations'] == result['official_registry']['verified_osm_hospitals']
           assert len(facilities['features']) == result['osm']['hospital_destinations']
           assert all(f['properties'].get('officially_verified') is True for f in facilities['features'])
           assert result['population']['zones_in_envelope'] >= 1
+          assert result['transfer_network']['directed_edges'] > 0
+          assert result['transfer_network']['stops_with_outgoing_transfer'] > 0
+          assert result['transfer_network']['recursive_walking_transfer_chaining'] is False
+          assert result['transfer_network']['max_walk_minutes'] == 10.0
+          assert result['transfer_network']['transfer_buffer_minutes'] == 1.0
+          assert result['baseline']['population_weighted_mean_minutes'] <= result['same_input_no_transfer']['baseline']['population_weighted_mean_minutes']
+          assert result['disrupted']['population_weighted_mean_minutes'] <= result['same_input_no_transfer']['disrupted']['population_weighted_mean_minutes']
+          assert result['transfer_model_effect']['baseline']['population_weighted_mean_reduction_minutes'] >= 0
+          assert result['transfer_model_effect']['disrupted']['population_weighted_mean_reduction_minutes'] >= 0
           assert result['baseline']['reachable_30min'] >= result['disrupted']['reachable_30min']
           assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
           assert result['impact']['population_with_gt_1min_increase'] > 0
+          assert all('baseline_no_transfer_minutes' in f['properties'] for f in population['features'])
           print(json.dumps({
               'official_registry': result['official_registry'],
+              'transfer_network': result['transfer_network'],
+              'transfer_model_effect': result['transfer_model_effect'],
               'impact': result['impact'],
           }, ensure_ascii=False, indent=2))
           PY
-      - name: Build planning canvas from A1.5
-        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_5 --destination _site
+      - name: Build planning canvas from A1.6
+        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_6 --destination _site
       - name: Validate generated planning canvas
         run: |
           node --check _site/app.js
@@ -129,15 +143,17 @@ jobs:
           from pathlib import Path
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
-          assert manifest['result_stage'] == 'A1.5'
+          assert manifest['result_stage'] == 'A1.6'
           assert 'three-pane-planning-canvas' in manifest['ui_capabilities']
           assert 'official-hospital-verification-gate' in manifest['ui_capabilities']
+          assert 'stop-to-stop-walking-transfer' in manifest['ui_capabilities']
+          assert 'same-input-no-transfer-model-comparison' in manifest['ui_capabilities']
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-5-planning-canvas
+          name: a1-6-planning-canvas
           path: |
-            outputs/a1_5
+            outputs/a1_6
             _site
           if-no-files-found: error
       - uses: actions/configure-pages@v5
