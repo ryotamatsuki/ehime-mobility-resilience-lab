@@ -111,9 +111,21 @@ def apply_result_specific_labels(destination: Path, summary: dict) -> None:
             "<div><dt>徒歩乗換</dt><dd>道路NW 10分以内 + 1分</dd></div><div><dt>分析範囲</dt><dd>GTFS停留所bbox周辺</dd></div>",
         )
     if stage == "A1.7":
+        temporal = summary["temporal_resilience"]
+        card = (
+            '<section class="analytics-card temporal-card">'
+            '<div class="analytics-heading"><div><p class="pane-kicker">TEMPORAL RESILIENCE</p>'
+            '<h2>終日の時間帯レジリエンス</h2></div><span class="data-chip">06:00–21:00 / 1時間</span></div>'
+            '<div class="severity-grid">'
+            f'<div><span>影響最大</span><strong>{temporal["worst_affected_time"]}</strong><small>{temporal["worst_affected_population"]:,.0f}人相当</small></div>'
+            f'<div><span>平均悪化最大</span><strong>{temporal["worst_mean_degradation_time"]}</strong><small>+{temporal["worst_mean_degradation_minutes"]:.3f}分</small></div>'
+            f'<div><span>影響最小</span><strong>{temporal["lowest_affected_time"]}</strong><small>{temporal["lowest_affected_population"]:,.0f}人相当</small></div>'
+            '</div><p class="builder-note">全16時点の詳細値は temporal_profile.json に保存。地図は比較継続性のため08:00断面を表示しています。</p>'
+            '</section>'
+        )
         html = html.replace(
-            "<section class=\"analytics-card recovery-card\">",
-            "<section class=\"analytics-card temporal-card\"><div class=\"analytics-heading\"><div><p class=\"pane-kicker\">TEMPORAL RESILIENCE</p><h2>終日の時間帯レジリエンス</h2></div><span class=\"data-chip\">06:00–21:00 / 1時間</span></div><div id=\"temporal-summary\" class=\"temporal-summary\">終日結果を読み込み中…</div><div id=\"temporal-chart\" class=\"temporal-chart\" aria-label=\"時間帯別影響人口\"></div></section><section class=\"analytics-card recovery-card\">",
+            '<section class="analytics-card recovery-card">',
+            card + '<section class="analytics-card recovery-card">',
         )
     index.write_text(html, encoding="utf-8")
 
