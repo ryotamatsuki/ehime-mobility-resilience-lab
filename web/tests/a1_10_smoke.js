@@ -85,7 +85,7 @@ if (fs.existsSync(path.join(dataDir, "summary.json"))) {
       throw new Error("A1.10 destination layer count mismatch: " + kind);
     }
     if (!(byKind[kind] > 0)) throw new Error("A1.10 has no public destination for " + kind);
-    if (!shelterAccess.destinations || !shelterAccess.destinations[kind]) {
+    if (!shelterAccess.by_kind || !shelterAccess.by_kind[kind]) {
       throw new Error("A1.9 shelter accessibility bundle missing " + kind);
     }
   }
