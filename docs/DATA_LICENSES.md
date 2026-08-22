@@ -1,6 +1,6 @@
 # Data Licenses and Redistribution Gate
 
-調査基準日：2026年8月22日（JST）
+調査基準日：2026年8月23日（JST）
 
 ## コード
 
@@ -12,6 +12,8 @@ OpenStreetMapの道路抽出物はODbL 1.0の対象として扱う。公開地�
 
 A1ではGTFS停留所bbox + 0.02度の道路・施設をCI実行時だけ取得し、Raw Overpass JSONはGitHubへ固定保存しない。分析結果・小規模な派生成果物にもOpenStreetMap attributionを保持する。
 
+A1.9の避難所位置は、大洲市公式避難所名簿に座標が存在しないため、現在のGTFS分析範囲内で公式施設名と一意に照合できたOSM named featureの位置をB区分として利用する。OSM位置を大洲市の公式座標と表示してはならない。
+
 ## 大洲市「ぐるりんおおず」GTFS
 
 公式データページ：<https://www.city.ozu.ehime.jp/site/opendata/44871.html>
@@ -19,6 +21,24 @@ A1ではGTFS停留所bbox + 0.02度の道路・施設をCI実行時だけ取得�
 2026年4月1日更新の公式ページでCC BY 4.0を確認した。A1で利用するfeed version 5.0は2026-04-01〜2027-03-31が有効期間である。
 
 生GTFS ZIPをリポジトリへ再配布せず、CI実行時に公式URLから取得する。分析成果物には大洲市を出典として記録する。将来、生GTFS自体を公開bundleへ同梱する場合は、その時点の公式利用規約・出典表示要件を再確認する。
+
+## 大洲市「指定緊急避難場所・指定一般避難所・指定福祉避難所」
+
+公式データページ：<https://www.city.ozu.ehime.jp/site/opendata/31903.html>
+
+A1.9で利用するExcel：<https://www.city.ozu.ehime.jp/uploaded/attachment/47130.xlsx>
+
+2026年4月1日更新の公式オープンデータで、CC BY 4.0として利用する。公式名簿には施設名、住所、災害種別、電話番号、受入対象者、想定収容人数等が含まれるが、緯度・経度は含まれない。
+
+A1.9では次の利用境界を設ける。
+
+- 公式施設名・住所・収容人数等はA区分の公式属性として扱う。
+- 施設位置は公式データ由来ではなく、公式名と一意に照合できたOpenStreetMap named featureをB区分として利用する。
+- 曖昧一致・未照合施設は推測座標や外部ジオコーダーで補完せず、Accessibility計算から除外する。
+- 「○○高校運動場」等をOSMの親施設「○○高校」位置へ対応させる場合は `parent_feature` と明示し、運動場そのものの正確な代表点とは扱わない。
+- 公式市全体件数60/96/20を、現在のGTFS分析範囲における位置照合率の分母として扱わない。公式名簿のみでは分析範囲内施設数を確定できないためである。
+- Raw ExcelはCI実行時に取得するが、repository、GitHub Actions artifact、GitHub Pagesへ同梱しない。
+- 公開する `shelters.geojson` 等は大洲市公式属性（CC BY 4.0）とOSM由来位置（ODbL 1.0）を組み合わせた派生成果物であることを明示する。
 
 ## 令和2年簡易100mメッシュ人口
 

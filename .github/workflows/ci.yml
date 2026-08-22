@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-8-route-trip-criticality]
+    branches: [main, feature/a1-9-shelter-accessibility]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -72,6 +72,13 @@ jobs:
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
+      - name: Probe official Ozu shelter workbook schema
+        run: |
+          for attempt in 1 2 3; do
+            if python scripts/ingest/probe_ozu_shelters.py; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
 
   a1_real_accessibility:
     needs: [python, web_source, a1_source_probe]
@@ -81,78 +88,103 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Build A1.8 route/trip criticality
+      - name: Build A1.9 shelter accessibility
         run: |
           for attempt in 1 2 3; do
-            if PYTHONPATH=src python scripts/build_network/build_a1_8.py --output outputs/a1_8; then break; fi
+            if PYTHONPATH=src python scripts/build_network/build_a1_9.py --output outputs/a1_9; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-      - name: Validate A1.8 result contract
+      - name: Validate A1.9 result contract
         run: |
           python - <<'PY'
-          import json
+          import json, math
           from pathlib import Path
-          result = json.loads(Path('outputs/a1_8/summary.json').read_text())
-          temporal = json.loads(Path('outputs/a1_8/temporal_profile.json').read_text())
-          criticality = json.loads(Path('outputs/a1_8/criticality.json').read_text())
-          facilities = json.loads(Path('outputs/a1_8/facilities.geojson').read_text())
-          assert result['stage'] == 'A1.8'
+          result = json.loads(Path('outputs/a1_9/summary.json').read_text())
+          criticality = json.loads(Path('outputs/a1_9/criticality.json').read_text())
+          temporal = json.loads(Path('outputs/a1_9/temporal_profile.json').read_text())
+          shelters = json.loads(Path('outputs/a1_9/shelters.geojson').read_text())
+          shelter_access = json.loads(Path('outputs/a1_9/shelter_accessibility.json').read_text())
+          shelter_mesh = json.loads(Path('outputs/a1_9/shelter_population_access.geojson').read_text())
+          assert result['stage'] == 'A1.9'
           assert result['status'] == 'computed'
           assert result['classification'] == 'C'
           assert result['scenario_classification'] == 'D'
           assert result['gtfs']['snapped_stops'] == result['gtfs']['stops']
-          assert result['official_registry']['verified_osm_hospitals'] >= 1
           assert result['official_registry']['official_records_without_osm_match'] == 0
           assert result['official_registry']['raw_workbook_published'] is False
-          assert all(f['properties'].get('officially_verified') is True for f in facilities['features'])
           assert result['transfer_network']['directed_edges'] > 0
           assert result['temporal_window']['slots'] == 16
           assert len(temporal['rows']) == 16
-          assert criticality['stage'] == 'A1.8'
           assert len(criticality['route_ranking']) == result['gtfs']['active_routes']
           assert len(criticality['trip_ranking']) == result['gtfs']['active_trips']
-          assert len(criticality['route_ranking']) >= 2
-          assert len(criticality['trip_ranking']) >= 2
-          assert [x['rank'] for x in criticality['route_ranking']] == list(range(1, len(criticality['route_ranking']) + 1))
-          assert [x['rank'] for x in criticality['trip_ranking']] == list(range(1, len(criticality['trip_ranking']) + 1))
-          for items in (criticality['route_ranking'], criticality['trip_ranking']):
-              keys = [(x['impact']['population_with_gt_1min_increase'], x['impact']['mean_minutes_change']) for x in items]
-              assert keys == sorted(keys, key=lambda x: (-x[0], -x[1]))
-              assert all(x['impact']['mean_minutes_change'] >= -1e-6 for x in items)
+          registry = result['shelter_registry']
+          assert registry['license'] == 'CC BY 4.0'
+          assert registry['citywide_counts'] == {'emergency': 60, 'general': 96, 'welfare': 20}
+          assert registry['raw_workbook_published'] is False
+          assert shelter_access['stage'] == 'A1.9'
+          assert len(shelter_mesh['features']) == result['population']['zones_in_envelope']
+          assert shelters['features']
+          for kind in ('emergency', 'general', 'welfare'):
+              item = result['shelter_accessibility'][kind]
+              assert item['usable_destinations'] > 0
+              assert item['baseline']['reachable_30min'] >= item['disrupted']['reachable_30min']
+              assert item['baseline']['reachable_60min'] >= item['disrupted']['reachable_60min']
+              assert item['impact']['mean_minutes_change'] >= -1e-6
+              stats = registry['matching']['by_kind'][kind]
+              assert stats['official_records'] == registry['citywide_counts'][kind]
+              assert stats['snapped_records'] == item['usable_destinations']
+          public_ids = {f['properties']['shelter_id'] for f in shelters['features']}
+          assert len(public_ids) == len(shelters['features'])
           print(json.dumps({
-              'top_route': criticality['route_ranking'][0],
-              'top_trip': criticality['trip_ranking'][0],
-              'counts': {'routes': len(criticality['route_ranking']), 'trips': len(criticality['trip_ranking'])},
+              'matching': registry['matching']['by_kind'],
+              'shelter_accessibility': {
+                  k: {
+                      'usable_destinations': v['usable_destinations'],
+                      'baseline_30min': v['baseline']['reachable_30min'],
+                      'disrupted_30min': v['disrupted']['reachable_30min'],
+                      'affected_gt1min': v['impact']['population_with_gt_1min_increase'],
+                      'mean_change': v['impact']['mean_minutes_change'],
+                  } for k, v in result['shelter_accessibility'].items()
+              },
           }, ensure_ascii=False, indent=2))
           PY
-      - name: Build planning canvas from A1.8
-        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_8 --destination _site
-      - name: Validate generated planning canvas
+      - name: Build planning canvas from A1.9
+        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_9 --destination _site
+      - name: Validate generated A1.9 planning canvas
         run: |
           node --check _site/app.js
           node web/tests/smoke.js _site
           test -f _site/data/temporal_profile.json
           test -f _site/data/criticality.json
+          test -f _site/data/shelters.geojson
+          test -f _site/data/shelter_accessibility.json
+          test -f _site/data/shelter_population_access.geojson
           test ! -e _site/data/official_medical.xlsx
+          test ! -e _site/data/ozu_shelters.xlsx
           python - <<'PY'
           import json
           from pathlib import Path
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
-          assert manifest['result_stage'] == 'A1.8'
-          for capability in ['official-hospital-verification-gate','stop-to-stop-walking-transfer','full-day-temporal-resilience','route-criticality-ranking','trip-criticality-ranking']:
-              assert capability in manifest['ui_capabilities']
+          assert manifest['result_stage'] == 'A1.9'
+          required = [
+              'official-hospital-verification-gate', 'stop-to-stop-walking-transfer',
+              'full-day-temporal-resilience', 'route-criticality-ranking',
+              'trip-criticality-ranking', 'official-shelter-registry',
+              'shelter-location-verification-gate', 'emergency-shelter-accessibility',
+              'general-shelter-accessibility', 'welfare-shelter-accessibility',
+          ]
+          assert all(item in manifest['ui_capabilities'] for item in required)
           html = Path('_site/index.html').read_text()
-          assert 'SERVICE CRITICALITY' in html
-          assert '路線 Top 3' in html
-          assert '便 Top 3' in html
+          assert 'SHELTER ACCESSIBILITY' in html
+          assert '避難所・福祉避難所への到達性' in html
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-8-planning-canvas
+          name: a1-9-planning-canvas
           path: |
-            outputs/a1_8
+            outputs/a1_9
             _site
           if-no-files-found: error
       - uses: actions/configure-pages@v5

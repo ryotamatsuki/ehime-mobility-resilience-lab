@@ -12,10 +12,11 @@ REQUIRED_RESULTS = (
     "summary.json", "stops.geojson", "facilities.geojson", "routes.geojson",
     "population_access.geojson",
 )
-SUPPORTED_RESULT_STAGES = {"A1.1", "A1.5", "A1.6", "A1.7", "A1.8"}
-OFFICIAL_STAGES = {"A1.5", "A1.6", "A1.7", "A1.8"}
-TRANSFER_STAGES = {"A1.6", "A1.7", "A1.8"}
-TEMPORAL_STAGES = {"A1.7", "A1.8"}
+SUPPORTED_RESULT_STAGES = {"A1.1", "A1.5", "A1.6", "A1.7", "A1.8", "A1.9"}
+OFFICIAL_STAGES = {"A1.5", "A1.6", "A1.7", "A1.8", "A1.9"}
+TRANSFER_STAGES = {"A1.6", "A1.7", "A1.8", "A1.9"}
+TEMPORAL_STAGES = {"A1.7", "A1.8", "A1.9"}
+CRITICALITY_STAGES = {"A1.8", "A1.9"}
 
 
 def read_json(path: Path):
@@ -43,7 +44,7 @@ def validate_results(source: Path) -> dict:
         if registry.get("official_records_without_osm_match", 1) != 0:
             raise ValueError(f"{stage} official hospital coverage is incomplete")
         if registry.get("raw_workbook_published") is not False:
-            raise ValueError(f"{stage} must not publish the raw official workbook")
+            raise ValueError(f"{stage} must not publish the raw official medical workbook")
     if stage in TRANSFER_STAGES and summary.get("transfer_network", {}).get("directed_edges", 0) < 1:
         raise ValueError(f"{stage} has no generated walking transfer edges")
     if stage == "A1.6" and summary.get("transfer_network", {}).get("recursive_walking_transfer_chaining") is not False:
@@ -52,19 +53,29 @@ def validate_results(source: Path) -> dict:
         temporal_path = source / "temporal_profile.json"
         if not temporal_path.exists():
             raise FileNotFoundError(f"{stage} temporal_profile.json is missing")
-        temporal = read_json(temporal_path)
-        rows = temporal.get("rows", [])
+        rows = read_json(temporal_path).get("rows", [])
         if len(rows) != summary.get("temporal_window", {}).get("slots") or len(rows) < 2:
             raise ValueError(f"{stage} temporal profile contract is invalid")
-    if stage == "A1.8":
+    if stage in CRITICALITY_STAGES:
         criticality_path = source / "criticality.json"
         if not criticality_path.exists():
-            raise FileNotFoundError("A1.8 criticality.json is missing")
+            raise FileNotFoundError(f"{stage} criticality.json is missing")
         criticality = read_json(criticality_path)
         if criticality.get("stage") != "A1.8":
-            raise ValueError("A1.8 criticality stage is invalid")
+            raise ValueError(f"{stage} predecessor criticality payload is invalid")
         if not criticality.get("route_ranking") or not criticality.get("trip_ranking"):
-            raise ValueError("A1.8 criticality rankings are empty")
+            raise ValueError(f"{stage} criticality rankings are empty")
+    if stage == "A1.9":
+        for name in ("shelters.geojson", "shelter_accessibility.json", "shelter_population_access.geojson"):
+            if not (source / name).exists():
+                raise FileNotFoundError(f"A1.9 {name} is missing")
+        registry = summary.get("shelter_registry", {})
+        if registry.get("raw_workbook_published") is not False:
+            raise ValueError("A1.9 must not publish the raw shelter workbook")
+        access = summary.get("shelter_accessibility", {})
+        for kind in ("emergency", "general", "welfare"):
+            if access.get(kind, {}).get("usable_destinations", 0) < 1:
+                raise ValueError(f"A1.9 has no usable {kind} shelter destination")
     if summary.get("population", {}).get("zones_in_envelope", 0) < 1:
         raise ValueError("A1 has no population zones")
 
@@ -119,16 +130,14 @@ def criticality_card(criticality: dict) -> str:
     trip_items = criticality["trip_ranking"][:3]
     route_html = "".join(
         '<li><strong>#{rank} {name}</strong><span>{pop:,.0f}人相当 / +{mean:.3f}分</span></li>'.format(
-            rank=int(item["rank"]),
-            name=escape(str(item["route_name"])),
+            rank=int(item["rank"]), name=escape(str(item["route_name"])),
             pop=float(item["impact"]["population_with_gt_1min_increase"]),
             mean=float(item["impact"]["mean_minutes_change"]),
         ) for item in route_items
     )
     trip_html = "".join(
         '<li><strong>#{rank} {route} {dep}</strong><span>{pop:,.0f}人相当 / +{mean:.3f}分</span></li>'.format(
-            rank=int(item["rank"]),
-            route=escape(str(item["route_name"])),
+            rank=int(item["rank"]), route=escape(str(item["route_name"])),
             dep=escape(str(item["first_departure"])),
             pop=float(item["impact"]["population_with_gt_1min_increase"]),
             mean=float(item["impact"]["mean_minutes_change"]),
@@ -147,9 +156,32 @@ def criticality_card(criticality: dict) -> str:
     )
 
 
-def apply_result_specific_labels(
-    destination: Path, summary: dict, criticality: dict | None = None
-) -> None:
+def shelter_card(summary: dict) -> str:
+    access = summary["shelter_accessibility"]
+    rows = []
+    for kind in ("emergency", "general", "welfare"):
+        item = access[kind]
+        impact = item["impact"]
+        rows.append(
+            '<div class="shelter-metric-row">'
+            f'<strong>{escape(str(item["kind_label"]))}</strong>'
+            f'<span>{int(item["usable_destinations"])}施設</span>'
+            f'<span>30分圏 {float(item["baseline"]["reachable_30min"]):,.0f}人</span>'
+            f'<span>停止影響 {float(impact["population_with_gt_1min_increase"]):,.0f}人</span>'
+            '</div>'
+        )
+    return (
+        '<article class="analytics-card shelter-card">'
+        '<div class="card-heading"><div><p class="pane-kicker">SHELTER ACCESSIBILITY</p>'
+        '<h2>避難所・福祉避難所への到達性</h2></div>'
+        '<span class="classification classification-a">公式名簿 A + 位置 B</span></div>'
+        '<div class="shelter-metrics">' + "".join(rows) + '</div>'
+        '<p class="chart-note">大洲市公式名簿のうち、分析範囲内でOSMの同名施設へ一意照合できた施設のみ。未照合施設は推測せず除外しています。</p>'
+        '</article>'
+    )
+
+
+def apply_result_specific_labels(destination: Path, summary: dict, criticality: dict | None = None) -> None:
     stage = summary.get("stage")
     if stage not in OFFICIAL_STAGES:
         return
@@ -157,8 +189,10 @@ def apply_result_specific_labels(
     html = index.read_text(encoding="utf-8")
     html = html.replace(
         "道路・病院：OpenStreetMap（B）",
-        "道路・病院位置：OpenStreetMap（B）／病院照合：愛媛県公式台帳（A）",
+        "道路・施設位置：OpenStreetMap（B）／病院照合：愛媛県公式台帳（A）",
     )
+    if stage == "A1.9":
+        html = html.replace("病院・停留所", "病院・避難所・停留所")
     if stage in TRANSFER_STAGES:
         html = html.replace(
             "<div><dt>分析範囲</dt><dd>GTFS停留所bbox周辺</dd></div>",
@@ -169,10 +203,12 @@ def apply_result_specific_labels(
     cards = ""
     if stage in TEMPORAL_STAGES:
         cards += temporal_card(summary)
-    if stage == "A1.8":
+    if stage in CRITICALITY_STAGES:
         if criticality is None:
-            raise ValueError("A1.8 criticality payload missing")
+            raise ValueError(f"{stage} criticality payload missing")
         cards += criticality_card(criticality)
+    if stage == "A1.9":
+        cards += shelter_card(summary)
     if cards:
         if marker not in html:
             raise ValueError("recovery card marker not found for derived UI injection")
@@ -185,12 +221,17 @@ def apply_result_specific_labels(
         "OpenStreetMap amenity=hospital（B）",
         "OpenStreetMap位置・名称（B）／愛媛県公式台帳照合済み（A）",
     )
+    app = app.replace(
+        'if (state.summary.stage !== "A1.1") throw new Error("analysis stage contract mismatch");',
+        'if (["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9"].indexOf(state.summary.stage) < 0) throw new Error("analysis stage contract mismatch");',
+    )
     app_path.write_text(app, encoding="utf-8")
 
 
 def build(source: Path, web: Path, destination: Path) -> dict:
     summary = validate_results(source)
-    criticality = read_json(source / "criticality.json") if summary["stage"] == "A1.8" else None
+    stage = summary["stage"]
+    criticality = read_json(source / "criticality.json") if stage in CRITICALITY_STAGES else None
     copy_static_web(web, destination)
     apply_result_specific_labels(destination, summary, criticality)
 
@@ -199,12 +240,16 @@ def build(source: Path, web: Path, destination: Path) -> dict:
     artifacts = list(REQUIRED_RESULTS)
     for name in REQUIRED_RESULTS:
         shutil.copy2(source / name, data_dir / name)
-    if summary["stage"] in TEMPORAL_STAGES:
+    if stage in TEMPORAL_STAGES:
         shutil.copy2(source / "temporal_profile.json", data_dir / "temporal_profile.json")
         artifacts.append("temporal_profile.json")
-    if summary["stage"] == "A1.8":
+    if stage in CRITICALITY_STAGES:
         shutil.copy2(source / "criticality.json", data_dir / "criticality.json")
         artifacts.append("criticality.json")
+    if stage == "A1.9":
+        for name in ("shelters.geojson", "shelter_accessibility.json", "shelter_population_access.geojson"):
+            shutil.copy2(source / name, data_dir / name)
+            artifacts.append(name)
 
     capabilities = [
         "three-pane-planning-canvas", "baseline-vs-disruption",
@@ -213,22 +258,28 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "provenance-and-limitations",
     ]
     capabilities.append(
-        "official-hospital-verification-gate" if summary["stage"] in OFFICIAL_STAGES
+        "official-hospital-verification-gate" if stage in OFFICIAL_STAGES
         else "osm-hospital-destinations"
     )
-    if summary["stage"] in TRANSFER_STAGES:
+    if stage in TRANSFER_STAGES:
         capabilities.append("stop-to-stop-walking-transfer")
-    if summary["stage"] == "A1.6":
+    if stage == "A1.6":
         capabilities.append("same-input-no-transfer-model-comparison")
-    if summary["stage"] in TEMPORAL_STAGES:
+    if stage in TEMPORAL_STAGES:
         capabilities.extend(["full-day-temporal-resilience", "hourly-impact-profile"])
-    if summary["stage"] == "A1.8":
+    if stage in CRITICALITY_STAGES:
         capabilities.extend(["route-criticality-ranking", "trip-criticality-ranking"])
+    if stage == "A1.9":
+        capabilities.extend([
+            "official-shelter-registry", "shelter-location-verification-gate",
+            "emergency-shelter-accessibility", "general-shelter-accessibility",
+            "welfare-shelter-accessibility", "shelter-public-geojson",
+        ])
 
     manifest = {
         "stage": "A1.3", "status": "computed",
         "title": "Ehime Mobility Resilience Lab — Planning Canvas",
-        "result_stage": summary["stage"], "analysis_date": summary["analysis_date"],
+        "result_stage": stage, "analysis_date": summary["analysis_date"],
         "departure_time": summary["departure_time"], "classification": summary["classification"],
         "scenario_classification": summary["scenario_classification"],
         "coverage": "大洲市ぐるりんおおず停留所bbox周辺",
@@ -251,14 +302,15 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "A1_5_OFFICIAL_HOSPITAL_GATE.md", "A1_5_QA_REPORT.md",
         "A1_6_WALKING_TRANSFER.md", "A1_6_QA_REPORT.md",
         "A1_7_TEMPORAL_RESILIENCE.md", "A1_7_QA_REPORT.md",
-        "A1_8_CRITICALITY.md", "A1_8_QA_REPORT.md", "DATA_LICENSES.md",
+        "A1_8_CRITICALITY.md", "A1_8_QA_REPORT.md",
+        "A1_9_SHELTER_ACCESSIBILITY.md", "A1_9_QA_REPORT.md", "DATA_LICENSES.md",
     ):
         src = ROOT / "docs" / name
         if src.exists():
             shutil.copy2(src, docs_out / name)
 
     print(json.dumps({
-        "stage": "A1.3", "result_stage": summary["stage"],
+        "stage": "A1.3", "result_stage": stage,
         "destination": str(destination), "gtfs_stops": summary["gtfs"]["stops"],
         "population_zones": summary["population"]["zones_in_envelope"],
         "hospital_destinations": summary["osm"]["hospital_destinations"],
@@ -267,13 +319,17 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "temporal_slots": summary.get("temporal_window", {}).get("slots", 0),
         "routes_ranked": summary.get("criticality", {}).get("routes_evaluated", 0),
         "trips_ranked": summary.get("criticality", {}).get("trips_evaluated", 0),
+        "shelter_destinations": sum(
+            item.get("usable_destinations", 0)
+            for item in summary.get("shelter_accessibility", {}).values()
+        ),
     }, ensure_ascii=False, indent=2))
     return manifest
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", type=Path, default=ROOT / "outputs" / "a1_8")
+    parser.add_argument("--source", type=Path, default=ROOT / "outputs" / "a1_9")
     parser.add_argument("--web", type=Path, default=ROOT / "web")
     parser.add_argument("--destination", type=Path, default=ROOT / "_site")
     args = parser.parse_args()
