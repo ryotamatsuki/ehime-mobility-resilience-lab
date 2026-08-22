@@ -1,8 +1,8 @@
-name: Foundation / A1.1 CI and Pages
+name: A1 Real Accessibility / WebGIS
 
 on:
   push:
-    branches: [main, feature/a0-foundation-data-architecture, feature/a1-1-minimal-accessibility]
+    branches: [main, feature/a1-2-accessibility-webgis-demo]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -30,8 +30,6 @@ jobs:
         run: PYTHONPATH=src python -m pytest -q
       - name: Run A0 foundation checks
         run: python scripts/ci/check_foundation.py
-      - name: Check generated Pages site
-        run: python scripts/ci/build_site.py --source web --destination _site
       - name: Validate public data contract
         run: python scripts/validate/run_validation.py
       - name: Execute deterministic model fixture
@@ -39,20 +37,35 @@ jobs:
       - name: Check Python syntax
         run: python -m compileall -q src scripts admin
 
+  web_source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check A1.2 source UI
+        run: |
+          test -f web/index.html
+          test -f web/app.js
+          test -f web/styles.css
+          node --check web/app.js
+          node web/tests/smoke.js web
+
   a1_source_probe:
-    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Probe selected real A1.1 sources
-        run: python scripts/ingest/probe_a1_sources.py
+      - name: Probe selected real A1 sources
+        run: |
+          for attempt in 1 2 3; do
+            if python scripts/ingest/probe_a1_sources.py; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
 
   a1_real_accessibility:
-    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
-    needs: [a1_source_probe, python]
+    needs: [python, web_source, a1_source_probe]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -60,7 +73,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Build A1.1 real-data accessibility result
-        run: PYTHONPATH=src python scripts/build_network/build_a1_1.py --output outputs/a1_1
+        run: |
+          for attempt in 1 2 3; do
+            if PYTHONPATH=src python scripts/build_network/build_a1_1.py --output outputs/a1_1; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
       - name: Validate A1.1 result contract
         run: |
           python - <<'PY'
@@ -71,44 +89,43 @@ jobs:
           assert result['status'] == 'computed'
           assert result['classification'] == 'C'
           assert result['scenario_classification'] == 'D'
-          assert result['gtfs']['snapped_stops'] >= 1
+          assert result['gtfs']['snapped_stops'] == result['gtfs']['stops']
           assert result['osm']['hospital_destinations'] >= 1
           assert result['population']['zones_in_envelope'] >= 1
           assert result['baseline']['reachable_30min'] >= result['disrupted']['reachable_30min']
           assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
+          assert result['impact']['population_with_gt_1min_increase'] > 0
           print(json.dumps(result['impact'], ensure_ascii=False, indent=2))
           PY
+      - name: Build A1.2 static WebGIS
+        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_1 --destination _site
+      - name: Validate generated A1.2 WebGIS
+        run: |
+          node --check _site/app.js
+          node web/tests/smoke.js _site
+          test ! -e _site/data/network.geojson.gz
+          test ! -e _site/data/metrics.json
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-1-real-accessibility
-          path: outputs/a1_1
+          name: a1-2-real-accessibility-webgis
+          path: |
+            outputs/a1_1
+            _site
           if-no-files-found: error
-
-  web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Check static assets
-        run: |
-          test -f web/index.html
-          test -f web/app.js
-          test -f web/styles.css
-          node --check web/app.js
-          node web/tests/smoke.js
-          python scripts/export_web/build_bundle.py
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main'
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: _site
 
   deploy:
     if: github.ref == 'refs/heads/main'
-    needs: [python, web]
+    needs: [a1_real_accessibility]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
       - id: deployment
         uses: actions/deploy-pages@v4
