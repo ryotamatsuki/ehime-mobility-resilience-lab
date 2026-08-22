@@ -18,12 +18,13 @@ for (const stale of ["road56-stress-test", "国道56号区間停止チェック"
 }
 
 const dataDir = path.join(target, "data");
-if (fs.existsSync(dataDir)) {
+const generatedSummary = path.join(dataDir, "summary.json");
+if (fs.existsSync(generatedSummary)) {
   const required = ["summary.json", "manifest.json", "routes.geojson", "stops.geojson", "facilities.geojson", "population_access.geojson"];
   for (const name of required) {
     if (!fs.existsSync(path.join(dataDir, name))) throw new Error("missing generated A1.2 data: " + name);
   }
-  const summary = JSON.parse(fs.readFileSync(path.join(dataDir, "summary.json"), "utf8"));
+  const summary = JSON.parse(fs.readFileSync(generatedSummary, "utf8"));
   const manifest = JSON.parse(fs.readFileSync(path.join(dataDir, "manifest.json"), "utf8"));
   const population = JSON.parse(fs.readFileSync(path.join(dataDir, "population_access.geojson"), "utf8"));
   const stops = JSON.parse(fs.readFileSync(path.join(dataDir, "stops.geojson"), "utf8"));
