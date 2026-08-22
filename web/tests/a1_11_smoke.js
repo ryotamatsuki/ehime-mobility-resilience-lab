@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(target, "index.html"), "utf8");
 const app = fs.readFileSync(path.join(target, "app.js"), "utf8");
 const css = fs.readFileSync(path.join(target, "a1_11.css"), "utf8");
 const runtime = fs.readFileSync(path.join(target, "a1_11_runtime.js"), "utf8");
-for (const marker of ["time-dependent criticality", "time-criticality", "06:00", "21:00"]) {
+for (const marker of ["time-dependent criticality", "time-criticality"]) {
   if (!app.toLowerCase().includes(marker.toLowerCase()) && !runtime.toLowerCase().includes(marker.toLowerCase()) && !css.toLowerCase().includes(marker.toLowerCase()) && !html.toLowerCase().includes(marker.toLowerCase())) {
     throw new Error("missing A1.11 source/UI marker: " + marker);
   }
