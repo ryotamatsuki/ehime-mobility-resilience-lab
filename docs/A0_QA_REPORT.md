@@ -11,7 +11,7 @@ A0文書・構成・データ実現可能性の受入判定：PASS WITH WARNINGS
 | Check | Result | Evidence |
 |---|---|---|
 | GitHub repository | PASS | ryotamatsuki/ehime-mobility-resilience-lab |
-| 作業ブランチ | PASS | feature/ehime-mobility-resilience-v1 |
+| 作業ブランチ | PASS | feature/a0-foundation-data-architecture |
 | 仕様書 | PASS | docs/SPECIFICATION.mdを初回保存済み |
 | Data Inventory | PASS | docs/DATA_INVENTORY.md |
 | Availability Matrix | PASS | docs/DATA_AVAILABILITY_MATRIX.md |
