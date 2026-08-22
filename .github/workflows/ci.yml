@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-9-shelter-accessibility]
+    branches: [main, feature/a1-10-destination-switcher]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -48,8 +48,12 @@ jobs:
           test -f web/app.js
           test -f web/styles.css
           test -f web/mobile.css
+          test -f web/a1_10.css
+          test -f web/a1_10_runtime.js
           node --check web/app.js
+          node --check web/a1_10_runtime.js
           node web/tests/smoke.js web
+          node web/tests/a1_10_smoke.js web
 
   a1_source_probe:
     runs-on: ubuntu-latest
@@ -98,7 +102,7 @@ jobs:
       - name: Validate A1.9 result contract
         run: |
           python - <<'PY'
-          import json, math
+          import json
           from pathlib import Path
           result = json.loads(Path('outputs/a1_9/summary.json').read_text())
           criticality = json.loads(Path('outputs/a1_9/criticality.json').read_text())
@@ -134,10 +138,14 @@ jobs:
               stats = registry['matching']['by_kind'][kind]
               assert stats['official_records'] == registry['citywide_counts'][kind]
               assert stats['snapped_records'] == item['usable_destinations']
+              public_count = sum(1 for f in shelters['features'] if f['properties']['kind'] == kind)
+              assert public_count == item['usable_destinations']
           public_ids = {f['properties']['shelter_id'] for f in shelters['features']}
-          assert len(public_ids) == len(shelters['features'])
+          assert len(public_ids) == len(shelters['features']) > 0
+          assert result['osm']['hospital_destinations'] > 0
           print(json.dumps({
-              'matching': registry['matching']['by_kind'],
+              'hospital_destinations': result['osm']['hospital_destinations'],
+              'shelter_matching': registry['matching']['by_kind'],
               'shelter_accessibility': {
                   k: {
                       'usable_destinations': v['usable_destinations'],
@@ -149,12 +157,27 @@ jobs:
               },
           }, ensure_ascii=False, indent=2))
           PY
-      - name: Build planning canvas from A1.9
+      - name: Build generated A1.9 planning canvas
         run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_9 --destination _site
-      - name: Validate generated A1.9 planning canvas
+      - name: Smoke generated A1.9 site before A1.10
         run: |
           node --check _site/app.js
           node web/tests/smoke.js _site
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('_site/data/manifest.json').read_text())
+          assert manifest['result_stage'] == 'A1.9'
+          assert manifest.get('ui_release_stage') is None
+          assert 'shelter-map-layer' not in manifest['ui_capabilities']
+          PY
+      - name: Apply A1.10 destination switcher UI
+        run: python scripts/export_web/apply_a1_10_ui.py --site _site
+      - name: Smoke generated A1.10 site
+        run: |
+          node --check _site/app.js
+          node --check _site/a1_10_runtime.js
+          node web/tests/a1_10_smoke.js _site
           test -f _site/data/temporal_profile.json
           test -f _site/data/criticality.json
           test -f _site/data/shelters.geojson
@@ -168,21 +191,26 @@ jobs:
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
           assert manifest['result_stage'] == 'A1.9'
+          assert manifest['ui_release_stage'] == 'A1.10'
           required = [
               'official-hospital-verification-gate', 'stop-to-stop-walking-transfer',
               'full-day-temporal-resilience', 'route-criticality-ranking',
               'trip-criticality-ranking', 'official-shelter-registry',
               'shelter-location-verification-gate', 'emergency-shelter-accessibility',
               'general-shelter-accessibility', 'welfare-shelter-accessibility',
+              'destination-switcher', 'shelter-map-layer',
+              'destination-synchronized-metrics', 'destination-synchronized-charts',
+              'destination-provenance-popups',
           ]
           assert all(item in manifest['ui_capabilities'] for item in required)
           html = Path('_site/index.html').read_text()
-          assert 'SHELTER ACCESSIBILITY' in html
-          assert '避難所・福祉避難所への到達性' in html
+          assert 'href="a1_10.css"' in html
+          assert 'src="a1_10_runtime.js"' in html
+          assert 'data-ui-stage="A1.10"' in html
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-9-planning-canvas
+          name: a1-10-planning-canvas
           path: |
             outputs/a1_9
             _site
