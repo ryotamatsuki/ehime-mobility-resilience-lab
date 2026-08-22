@@ -46,6 +46,8 @@ def validate_results(source: Path) -> dict:
         registry = summary.get("official_registry", {})
         if registry.get("verified_osm_hospitals", 0) < 1:
             raise ValueError("A1.5 has no official-registry-verified OSM hospitals")
+        if registry.get("official_records_without_osm_match", 1) != 0:
+            raise ValueError("A1.5 official hospitals are not fully represented by verified public OSM features")
         if registry.get("raw_workbook_published") is not False:
             raise ValueError("A1.5 must not publish the raw official workbook")
     if summary.get("population", {}).get("zones_in_envelope", 0) < 1:
@@ -76,9 +78,30 @@ def copy_static_web(web: Path, destination: Path) -> None:
             shutil.copy2(item, target)
 
 
+def apply_result_specific_labels(destination: Path, summary: dict) -> None:
+    if summary.get("stage") != "A1.5":
+        return
+    index = destination / "index.html"
+    html = index.read_text(encoding="utf-8")
+    html = html.replace(
+        "道路・病院：OpenStreetMap（B）",
+        "道路・病院位置：OpenStreetMap（B）／病院照合：愛媛県公式台帳（A）",
+    )
+    index.write_text(html, encoding="utf-8")
+
+    app_path = destination / "app.js"
+    app = app_path.read_text(encoding="utf-8")
+    app = app.replace(
+        "OpenStreetMap amenity=hospital（B）",
+        "OpenStreetMap位置・名称（B）／愛媛県公式台帳照合済み（A）",
+    )
+    app_path.write_text(app, encoding="utf-8")
+
+
 def build(source: Path, web: Path, destination: Path) -> dict:
     summary = validate_results(source)
     copy_static_web(web, destination)
+    apply_result_specific_labels(destination, summary)
 
     data_dir = destination / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
