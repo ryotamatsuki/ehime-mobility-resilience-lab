@@ -72,8 +72,9 @@ jobs:
           assert result['classification'] == 'C'
           assert result['scenario_classification'] == 'D'
           assert result['gtfs']['snapped_stops'] >= 1
-          assert result['osm']['essential_facilities'] >= 1
+          assert result['osm']['hospital_destinations'] >= 1
           assert result['population']['zones_in_envelope'] >= 1
+          assert result['baseline']['reachable_30min'] >= result['disrupted']['reachable_30min']
           assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
           print(json.dumps(result['impact'], ensure_ascii=False, indent=2))
           PY
