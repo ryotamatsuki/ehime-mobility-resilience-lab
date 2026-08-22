@@ -1,0 +1,141 @@
+/* A1.10 Destination Switcher UI contract.
+   This layer is applied only to generated A1.9 sites after the A1.9 regression
+   smoke test passes. It changes presentation only; routing remains precomputed. */
+
+.destination-section {
+  padding-top: 11px;
+  padding-bottom: 12px;
+  background: linear-gradient(180deg, #fbfdff 0%, #fff 100%);
+}
+
+.destination-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.destination-choice {
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+.destination-choice:hover {
+  border-color: #8aa8d4;
+  background: #f8fbff;
+}
+
+.destination-choice:has(input:focus-visible) {
+  outline: 3px solid #79a9ff;
+  outline-offset: 2px;
+}
+
+.destination-choice input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #1456d9;
+}
+
+.destination-choice > span {
+  min-width: 0;
+  font-size: .65rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.destination-choice:has(input:checked) {
+  border-color: #1456d9;
+  background: #edf4ff;
+  box-shadow: inset 3px 0 0 #1456d9;
+}
+
+.destination-choice:has(input[value="emergency"]:checked) {
+  border-color: #b42318;
+  background: #fff2f0;
+  box-shadow: inset 3px 0 0 #b42318;
+}
+
+.destination-choice:has(input[value="general"]:checked) {
+  border-color: #087443;
+  background: #ecfdf3;
+  box-shadow: inset 3px 0 0 #087443;
+}
+
+.destination-choice:has(input[value="welfare"]:checked) {
+  border-color: #6941c6;
+  background: #f4f3ff;
+  box-shadow: inset 3px 0 0 #6941c6;
+}
+
+.disabled-destination {
+  opacity: .48;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+body[data-destination="hospital"] .map-legend-card .hospital-dot {
+  border-color: #6431c9;
+  background: #eee9ff;
+}
+body[data-destination="emergency"] .map-legend-card .hospital-dot {
+  border-color: #b42318;
+  background: #fee4e2;
+}
+body[data-destination="general"] .map-legend-card .hospital-dot {
+  border-color: #087443;
+  background: #d1fadf;
+}
+body[data-destination="welfare"] .map-legend-card .hospital-dot {
+  border-color: #6941c6;
+  background: #ebe9fe;
+}
+
+body[data-ui-stage="A1.10"] .map-scale-card,
+body[data-ui-stage="A1.10"] .map-legend-card {
+  backdrop-filter: blur(3px);
+}
+
+body[data-ui-stage="A1.10"] .destination-choice[aria-current="true"] {
+  font-weight: 850;
+}
+
+@media screen and (max-width: 900px), screen and (max-device-width: 900px), (hover: none) and (pointer: coarse) {
+  .destination-section {
+    padding-top: 12px;
+    padding-bottom: 13px;
+  }
+  .destination-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .destination-choice {
+    min-height: 52px;
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 9px 10px;
+    border-radius: 8px;
+    touch-action: manipulation;
+  }
+  .destination-choice input {
+    width: 20px;
+    height: 20px;
+  }
+  .destination-choice > span {
+    font-size: .78rem;
+  }
+}
+
+@media screen and (max-width: 420px), screen and (max-device-width: 420px) {
+  .destination-grid { grid-template-columns: 1fr; }
+  .destination-choice { min-height: 50px; }
+}
