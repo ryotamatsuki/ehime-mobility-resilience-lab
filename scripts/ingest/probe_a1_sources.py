@@ -1,9 +1,4 @@
-"""Probe A1.1 external sources without persisting raw third-party data.
-
-This script is intentionally small and dependency-free. It validates that the
-selected real-world sources are reachable from CI and reports their structure
-before the A1.1 ingestion pipeline is allowed to depend on them.
-"""
+"""Probe A1.1 external sources without persisting raw third-party data."""
 
 from __future__ import annotations
 
@@ -18,7 +13,6 @@ import zipfile
 GTFS_URL = "https://www.city.iyo.lg.jp/keizaikoyou/matidukuri/documents/agency.zip"
 POP_URL = "https://gtfs-gis.jp/data/100m_pop2020/38/100m_mesh_pop2020_38210.zip"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-
 REQUIRED_GTFS = {"stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
 
 
@@ -63,20 +57,27 @@ def first_csv(payload: bytes) -> tuple[str, list[dict[str, str]]]:
         return name, list(csv.DictReader(io.StringIO(decode(archive.read(name)))))
 
 
-def probe_overpass() -> dict[str, object]:
-    query = """
-[out:json][timeout:60];
-area["boundary"="administrative"]["name"="伊予市"]->.iyo;
+def stop_bbox(stops: list[dict[str, str]], padding: float = 0.02) -> tuple[float, float, float, float]:
+    lats = [float(row["stop_lat"]) for row in stops]
+    lons = [float(row["stop_lon"]) for row in stops]
+    return min(lats) - padding, min(lons) - padding, max(lats) + padding, max(lons) + padding
+
+
+def probe_overpass(stops: list[dict[str, str]]) -> dict[str, object]:
+    south, west, north, east = stop_bbox(stops)
+    bbox = f"{south:.6f},{west:.6f},{north:.6f},{east:.6f}"
+    query = f"""
+[out:json][timeout:30];
 (
-  way(area.iyo)["highway"];
-  node(area.iyo)["amenity"~"hospital|clinic|townhall|school"];
-  way(area.iyo)["amenity"~"hospital|clinic|townhall|school"];
+  way["highway"]({bbox});
+  node["amenity"~"hospital|clinic|townhall|school"]({bbox});
+  way["amenity"~"hospital|clinic|townhall|school"]({bbox});
 );
 out count;
 """.strip()
-    payload = fetch(OVERPASS_URL, data=urllib.parse.urlencode({"data": query}).encode())
+    payload = fetch(OVERPASS_URL, data=urllib.parse.urlencode({"data": query}).encode(), timeout=45)
     response = json.loads(payload.decode("utf-8"))
-    return {"elements": response.get("elements", [])}
+    return {"bbox": [south, west, north, east], "elements": response.get("elements", [])}
 
 
 def main() -> int:
@@ -96,7 +97,7 @@ def main() -> int:
     population_csv, population_rows = first_csv(population)
     population_header = list(population_rows[0]) if population_rows else []
 
-    overpass = probe_overpass()
+    overpass = probe_overpass(stops)
 
     report = {
         "gtfs": {
@@ -108,6 +109,7 @@ def main() -> int:
             "routes": len(routes),
             "trips": len(trips),
             "route_sample": routes[:3],
+            "stop_sample": stops[:3],
             "calendar": calendar[:5],
             "calendar_dates_tail": calendar_dates[-5:],
             "feed_info": feed_info[:3],
