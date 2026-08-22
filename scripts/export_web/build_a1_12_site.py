@@ -4,10 +4,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.apply_a1_11_ui import apply as apply_a1_11
 from scripts.export_web.build_a1_11_site import build as build_a1_11_site
