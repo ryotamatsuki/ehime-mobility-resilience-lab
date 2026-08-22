@@ -21,6 +21,10 @@ def main() -> int:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     for artifact in manifest.get("artifacts", []):
         path = public / artifact["path"]
+        if not path.exists() and path.suffix == ".gz":
+            local_fallback = public / path.stem
+            if local_fallback.exists():
+                path = local_fallback
         if not path.exists():
             print(f"missing: {path}")
             return 1
