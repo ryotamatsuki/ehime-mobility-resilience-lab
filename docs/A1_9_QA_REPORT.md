@@ -15,6 +15,8 @@ A1.9のRelease Gateは次を満たすこととする。
 7. Baselineより運休シナリオのAccessibilityが不自然に改善しない。
 8. A1.5病院公式Gate、A1.6徒歩乗換、A1.7時間帯分析、A1.8 Criticalityが回帰しない。
 9. Planning Canvas生成物と公開データ契約がsmoke testを通る。
+10. 公開 `shelters.geojson` の各施設に `exact` / `name_equivalent` / `parent_feature` の位置照合品質を付与する。
+11. 未実装の避難所地図レイヤーをmanifestでadvertiseしない。
 
 ## Data Gate結果
 
@@ -112,7 +114,7 @@ A1.9実データCIで次を再実行しPASSした。
 - generated-site smoke test
 - artifact upload
 
-実データCI run `32582653196` の主要ステップはPASSした。最終documentation headについても同じGateを再実行してからmergeする。
+実データCI run `32582653196` の主要ステップはPASSした。最終documentation / truthfulness headについても同じGateを再実行してからmergeする。
 
 ## Public Bundle Gate
 
@@ -130,7 +132,7 @@ A1.9実データCIで次を再実行しPASSした。
 - 愛媛県公式医療機関Raw Excel
 - Raw Overpass JSON
 
-A1.9では避難所位置の公開GeoJSONは生成するが、Planning CanvasのLeaflet地図に避難所レイヤーを切り替え表示する機能は未実装である。manifest capabilityは `shelter-public-geojson` とし、`shelter-map-layer` を名乗らない。
+A1.9では避難所位置の公開GeoJSONは生成するが、Planning CanvasのLeaflet地図に避難所レイヤーを切り替え表示する機能は未実装である。manifest capabilityは `shelter-public-geojson` とし、`shelter-map-layer` を名乗らない。生成site smoke testはこのtruthfulness contractも検査する。
 
 ## Warnings
 
