@@ -72,6 +72,7 @@ if (fs.existsSync(generatedSummary)) {
   if (!(summary.impact.population_with_gt_1min_increase > 0)) throw new Error("stress test has no measurable travel-time impact");
   if (summary.stage === "A1.5") {
     if (!summary.official_registry || !(summary.official_registry.verified_osm_hospitals > 0)) throw new Error("A1.5 official verification summary missing");
+    if (summary.official_registry.official_records_without_osm_match !== 0) throw new Error("official hospital coverage is incomplete");
     if (summary.official_registry.raw_workbook_published !== false) throw new Error("raw official workbook publication is forbidden");
     for (const feature of facilities.features) {
       const p = feature.properties || {};
@@ -81,6 +82,8 @@ if (fs.existsSync(generatedSummary)) {
       }
     }
     if (!manifest.ui_capabilities.includes("official-hospital-verification-gate")) throw new Error("A1.5 UI provenance capability missing");
+    if (!html.includes("病院照合：愛媛県公式台帳（A）")) throw new Error("A1.5 official verification label missing from generated UI");
+    if (!app.includes("愛媛県公式台帳照合済み（A）")) throw new Error("A1.5 hospital popup provenance label missing");
   }
 }
 
