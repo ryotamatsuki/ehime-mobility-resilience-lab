@@ -11,10 +11,12 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.apply_a1_10_ui import apply as apply_a1_10
 from scripts.export_web.build_a1_2_demo import build as build_base
@@ -46,7 +48,6 @@ def build(source: Path, destination: Path) -> dict:
         compat_summary_path.write_text(json.dumps(compat_summary, ensure_ascii=False, indent=2), encoding="utf-8")
 
         build_base(compat, ROOT / "web", destination)
-        # A1.10 is validated against the genuine predecessor-shaped view.
         apply_a1_10(destination)
 
     data = destination / "data"
