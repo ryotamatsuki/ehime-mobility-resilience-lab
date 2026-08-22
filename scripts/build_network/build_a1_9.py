@@ -29,7 +29,6 @@ from accessibility.multimodal import (
     min_walk_minutes_to_facility,
     stop_transfer_edges,
     stop_walk_times,
-    summarize_population_access,
     walking_graph_from_overpass,
 )
 from accessibility.official_shelters import (
@@ -104,6 +103,7 @@ def _public_shelter_feature(item: dict[str, Any]) -> dict[str, Any]:
         "capacity": item.get("capacity"),
         "location_source": item.get("location_source"),
         "location_match_method": item.get("location_match_method"),
+        "location_match_quality": item.get("location_match_quality"),
         "location_match_score": item.get("location_match_score"),
         "osm_name": item.get("osm_name"),
         "snap_km": item.get("snap_km"),
@@ -124,7 +124,6 @@ def _public_shelter_feature(item: dict[str, Any]) -> dict[str, Any]:
 def build(output: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
 
-    # Preserve all validated predecessor outputs first.
     predecessor = build_a1_8(output)
 
     feed = load_feed(fetch(GTFS_URL))
@@ -150,7 +149,6 @@ def build(output: Path) -> dict[str, Any]:
     candidates = osm_named_candidates(osm)
     matched, matching_stats = match_official_shelters(official, candidates)
 
-    # Stops / population use the exact A1 envelope and walking graph.
     stops = [
         {
             "id": row["stop_id"],
@@ -277,6 +275,7 @@ def build(output: Path) -> dict[str, Any]:
             "Official Ozu shelter records contain no coordinates; A1.9 uses only unambiguously name-matched OSM geometry inside the current GTFS analysis envelope.",
             "Unmatched or ambiguous official shelters are excluded from accessibility calculations and reported in matching QA; they are not silently geocoded.",
             "Shelter accessibility therefore measures access to the verified subset in the current analysis envelope, not all citywide shelters.",
+            "parent_feature shelter matches use a parent facility location and do not claim an exact sports-ground or entrance point.",
             "The right-loop outage is a D stress-test assumption, not a disaster damage forecast.",
             "Population is a census-derived simplified 100 m allocation (B).",
             "A1.8 route/trip criticality and A1.7 hourly temporal resilience remain predecessor analyses and are preserved unchanged.",
