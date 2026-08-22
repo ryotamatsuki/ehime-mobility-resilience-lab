@@ -97,9 +97,14 @@ if (fs.existsSync(generatedSummary)) {
     for (const kind of ["emergency","general","welfare"]) {
       if (!(summary.shelter_accessibility[kind].usable_destinations > 0)) throw new Error("A1.9 no usable " + kind + " destinations");
     }
-    for (const capability of ["official-shelter-registry","shelter-location-verification-gate","emergency-shelter-accessibility","general-shelter-accessibility","welfare-shelter-accessibility"]) {
+    for (const feature of shelters.features) {
+      const q = (feature.properties || {}).location_match_quality;
+      if (["exact","name_equivalent","parent_feature"].indexOf(q) < 0) throw new Error("A1.9 shelter match quality missing");
+    }
+    for (const capability of ["official-shelter-registry","shelter-location-verification-gate","emergency-shelter-accessibility","general-shelter-accessibility","welfare-shelter-accessibility","shelter-public-geojson"]) {
       if (!manifest.ui_capabilities.includes(capability)) throw new Error("A1.9 shelter capability missing: " + capability);
     }
+    if (manifest.ui_capabilities.includes("shelter-map-layer")) throw new Error("A1.9 falsely advertises an unimplemented shelter map layer");
     if (!html.includes("SHELTER ACCESSIBILITY") || !html.includes("避難所・福祉避難所への到達性")) throw new Error("A1.9 shelter UI missing");
   }
 }
