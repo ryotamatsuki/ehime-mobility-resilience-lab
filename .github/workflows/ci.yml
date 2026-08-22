@@ -1,5 +1,6 @@
 name: A1 Real Accessibility / Planning Canvas
 
+# GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
     branches: [main, feature/a1-3-ideal-planning-canvas-ui]
