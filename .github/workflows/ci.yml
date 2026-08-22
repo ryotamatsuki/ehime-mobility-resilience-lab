@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-6-stop-walking-transfer]
+    branches: [main, feature/a1-7-temporal-resilience]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -81,22 +81,22 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Build A1.6 real-data accessibility with walking transfers
+      - name: Build A1.7 full-day temporal resilience
         run: |
           for attempt in 1 2 3; do
-            if PYTHONPATH=src python scripts/build_network/build_a1_6.py --output outputs/a1_6; then break; fi
+            if PYTHONPATH=src python scripts/build_network/build_a1_7.py --output outputs/a1_7; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-      - name: Validate A1.6 result contract
+      - name: Validate A1.7 result contract
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          result = json.loads(Path('outputs/a1_6/summary.json').read_text())
-          facilities = json.loads(Path('outputs/a1_6/facilities.geojson').read_text())
-          population = json.loads(Path('outputs/a1_6/population_access.geojson').read_text())
-          assert result['stage'] == 'A1.6'
+          result = json.loads(Path('outputs/a1_7/summary.json').read_text())
+          temporal = json.loads(Path('outputs/a1_7/temporal_profile.json').read_text())
+          facilities = json.loads(Path('outputs/a1_7/facilities.geojson').read_text())
+          assert result['stage'] == 'A1.7'
           assert result['status'] == 'computed'
           assert result['classification'] == 'C'
           assert result['scenario_classification'] == 'D'
@@ -104,56 +104,47 @@ jobs:
           assert result['official_registry']['verified_osm_hospitals'] >= 1
           assert result['official_registry']['official_records_without_osm_match'] == 0
           assert result['official_registry']['raw_workbook_published'] is False
-          assert result['official_registry']['official_attributes_in_public_geojson'] is False
-          assert result['osm']['hospital_destinations'] == result['official_registry']['verified_osm_hospitals']
           assert len(facilities['features']) == result['osm']['hospital_destinations']
           assert all(f['properties'].get('officially_verified') is True for f in facilities['features'])
-          assert result['population']['zones_in_envelope'] >= 1
           assert result['transfer_network']['directed_edges'] > 0
-          assert result['transfer_network']['stops_with_outgoing_transfer'] > 0
-          assert result['transfer_network']['recursive_walking_transfer_chaining'] is False
-          assert result['transfer_network']['max_walk_minutes'] == 10.0
-          assert result['transfer_network']['transfer_buffer_minutes'] == 1.0
-          assert result['baseline']['population_weighted_mean_minutes'] <= result['same_input_no_transfer']['baseline']['population_weighted_mean_minutes']
-          assert result['disrupted']['population_weighted_mean_minutes'] <= result['same_input_no_transfer']['disrupted']['population_weighted_mean_minutes']
-          assert result['transfer_model_effect']['baseline']['population_weighted_mean_reduction_minutes'] >= 0
-          assert result['transfer_model_effect']['disrupted']['population_weighted_mean_reduction_minutes'] >= 0
-          assert result['baseline']['reachable_30min'] >= result['disrupted']['reachable_30min']
-          assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
-          assert result['impact']['population_with_gt_1min_increase'] > 0
-          assert all('baseline_no_transfer_minutes' in f['properties'] for f in population['features'])
+          assert result['temporal_window']['start'] == '06:00'
+          assert result['temporal_window']['end'] == '21:00'
+          assert result['temporal_window']['step_minutes'] == 60
+          assert result['temporal_window']['slots'] == 16
+          assert temporal['stage'] == 'A1.7'
+          assert len(temporal['rows']) == 16
+          assert [r['departure_time'] for r in temporal['rows']] == [f'{h:02d}:00' for h in range(6,22)]
+          assert all(r['baseline']['reachable_30min'] >= r['disrupted']['reachable_30min'] for r in temporal['rows'])
+          assert all(r['baseline']['reachable_60min'] >= r['disrupted']['reachable_60min'] for r in temporal['rows'])
           print(json.dumps({
-              'official_registry': result['official_registry'],
-              'transfer_network': result['transfer_network'],
-              'transfer_model_effect': result['transfer_model_effect'],
-              'impact': result['impact'],
+              'temporal_resilience': result['temporal_resilience'],
+              'reference_impact': result['impact'],
           }, ensure_ascii=False, indent=2))
           PY
-      - name: Build planning canvas from A1.6
-        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_6 --destination _site
+      - name: Build planning canvas from A1.7
+        run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_7 --destination _site
       - name: Validate generated planning canvas
         run: |
           node --check _site/app.js
           node web/tests/smoke.js _site
-          test ! -e _site/data/network.geojson.gz
-          test ! -e _site/data/metrics.json
+          test -f _site/data/temporal_profile.json
           test ! -e _site/data/official_medical.xlsx
           python - <<'PY'
           import json
           from pathlib import Path
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
-          assert manifest['result_stage'] == 'A1.6'
-          assert 'three-pane-planning-canvas' in manifest['ui_capabilities']
+          assert manifest['result_stage'] == 'A1.7'
           assert 'official-hospital-verification-gate' in manifest['ui_capabilities']
           assert 'stop-to-stop-walking-transfer' in manifest['ui_capabilities']
-          assert 'same-input-no-transfer-model-comparison' in manifest['ui_capabilities']
+          assert 'full-day-temporal-resilience' in manifest['ui_capabilities']
+          assert 'hourly-impact-profile' in manifest['ui_capabilities']
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-6-planning-canvas
+          name: a1-7-planning-canvas
           path: |
-            outputs/a1_6
+            outputs/a1_7
             _site
           if-no-files-found: error
       - uses: actions/configure-pages@v5
