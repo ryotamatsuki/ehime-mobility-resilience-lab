@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-11-time-dependent-criticality]
+    branches: [main, feature/a1-12-vulnerable-population-equity]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -84,6 +84,13 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             if python scripts/ingest/probe_ozu_shelters.py; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
+      - name: Probe official Ozu region-age population schema
+        run: |
+          for attempt in 1 2 3; do
+            if python scripts/ingest/probe_ozu_age_population.py; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
