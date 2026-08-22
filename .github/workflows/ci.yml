@@ -1,8 +1,8 @@
-name: A0 Foundation CI and Pages
+name: Foundation / A1.1 CI and Pages
 
 on:
   push:
-    branches: [main, feature/a0-foundation-data-architecture]
+    branches: [main, feature/a0-foundation-data-architecture, feature/a1-1-minimal-accessibility]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -38,6 +38,52 @@ jobs:
         run: PYTHONPATH=src python scripts/validate/run_fixture_models.py
       - name: Check Python syntax
         run: python -m compileall -q src scripts admin
+
+  a1_source_probe:
+    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Probe selected real A1.1 sources
+        run: python scripts/ingest/probe_a1_sources.py
+
+  a1_real_accessibility:
+    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
+    needs: [a1_source_probe, python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build A1.1 real-data accessibility result
+        run: PYTHONPATH=src python scripts/build_network/build_a1_1.py --output outputs/a1_1
+      - name: Validate A1.1 result contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('outputs/a1_1/summary.json').read_text())
+          assert result['stage'] == 'A1.1'
+          assert result['status'] == 'computed'
+          assert result['classification'] == 'C'
+          assert result['scenario_classification'] == 'D'
+          assert result['gtfs']['snapped_stops'] >= 1
+          assert result['osm']['hospital_destinations'] >= 1
+          assert result['population']['zones_in_envelope'] >= 1
+          assert result['baseline']['reachable_30min'] >= result['disrupted']['reachable_30min']
+          assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
+          print(json.dumps(result['impact'], ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a1-1-real-accessibility
+          path: outputs/a1_1
+          if-no-files-found: error
+
   web:
     runs-on: ubuntu-latest
     steps:
@@ -50,6 +96,7 @@ jobs:
           node --check web/app.js
           node web/tests/smoke.js
           python scripts/export_web/build_bundle.py
+
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: [python, web]
