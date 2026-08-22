@@ -3,75 +3,64 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="愛媛の公共交通・道路・物流レジリエンス平時Stress Test">
-  <title>Ehime Mobility Resilience Lab</title>
+  <meta name="description" content="実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較するWebGIS">
+  <title>Ehime Mobility Resilience Lab — A1.2</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIINfQ3qQe6dABj6kQ1iV5pXgLz8Y8C8pR0=" crossorigin="">
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="site-header">
     <div>
-      <p class="eyebrow">EHIME MOBILITY RESILIENCE LAB</p>
-      <h1>もし、ここが通れなくなったら。</h1>
-      <p class="lead">災害が起きる前に「交通が止まった愛媛」を何度も試す、公共交通中心の平時Stress Test。</p>
+      <p class="eyebrow">EHIME MOBILITY RESILIENCE LAB / A1.2</p>
+      <h1>もし、このバスが止まったら。</h1>
+      <p class="lead">実際のGTFS、OSM徒歩道路、人口メッシュを使い、平常時と路線停止時の病院アクセスを比較する最小Stress Test。</p>
     </div>
     <div class="status-stack" aria-label="プロダクト状態">
       <span class="status status-warn">実被害予測ではありません</span>
-      <span class="status status-ok" id="data-status">公開データを確認中</span>
+      <span class="status status-ok" id="data-status">実データ成果物を確認中</span>
     </div>
   </header>
 
   <main class="app-shell">
     <nav class="step-nav" aria-label="分析の流れ">
       <span class="active">1 平常時を見る</span>
-      <span>2 止めてみる</span>
-      <span>3 何が困る？</span>
-      <span>4 どう戻す？</span>
-      <span>5 どこが重要？</span>
+      <span>2 バスを止めてみる</span>
+      <span>3 影響を見る</span>
     </nav>
 
     <section class="control-grid" aria-label="Scenario Builder">
       <div class="panel scenario-panel">
         <div class="panel-heading">
           <div>
-            <p class="kicker">Scenario Builder</p>
-            <h2>交通を止めてみる</h2>
+            <p class="kicker">Scenario</p>
+            <h2>平常時と停止時を切り替える</h2>
           </div>
           <span class="classification classification-d">D 仮定</span>
         </div>
-        <label for="recipe">初心者向けレシピ</label>
-        <select id="recipe">
-          <option value="road56-stress-test">国道56号区間停止チェック</option>
-          <option value="south-ehime">南予交通途絶チェック（未計算）</option>
-          <option value="hospital-access">病院アクセスチェック（GTFS入力待ち）</option>
-          <option value="rail-stop">主要鉄道停止チェック（時刻表入力待ち）</option>
-          <option value="freight-road">主要物流道路チェック（物流入力待ち）</option>
-          <option value="relief">救援物資到達性チェック（拠点入力待ち）</option>
-        </select>
-        <div class="scenario-actions">
-          <button id="apply-scenario" class="button button-primary">Scenarioを適用</button>
-          <button id="recalculate" class="button button-secondary">最新データで再計算</button>
+        <div class="scenario-switch" role="group" aria-label="シナリオ選択">
+          <button type="button" class="scenario-button active" data-scenario="baseline">平常時</button>
+          <button type="button" class="scenario-button" data-scenario="disrupted">右回り停止</button>
         </div>
-        <p id="scenario-description" class="muted">公開用に事前計算した道路Stress Testです。国道56号区間の完全停止をユーザー仮定として比較します。</p>
-        <div id="selection-note" class="selection-note" role="status">地図上の道路を選択すると、その停止条件を保存できます。</div>
+        <p id="scenario-description" class="muted">2026年8月21日 08:00出発。ぐるりんおおず全路線が利用できる平常時を表示します。</p>
+        <div id="selection-note" class="selection-note" role="status">人口メッシュをクリックすると、病院までの所要時間Before / Afterを確認できます。</div>
       </div>
+
       <div class="panel mode-panel">
         <div class="panel-heading">
           <div>
-            <p class="kicker">View Mode</p>
-            <h2>何を見る？</h2>
+            <p class="kicker">Layers</p>
+            <h2>表示するデータ</h2>
           </div>
-          <span class="classification classification-b">A / B / C / D</span>
+          <span class="classification classification-b">A / B / C</span>
         </div>
-        <div class="mode-buttons" role="group" aria-label="表示モード">
-          <button class="mode-button active" data-mode="PEOPLE">PEOPLE</button>
-          <button class="mode-button" data-mode="TRANSIT">TRANSIT</button>
-          <button class="mode-button" data-mode="TRAFFIC">TRAFFIC</button>
-          <button class="mode-button" data-mode="LOGISTICS">LOGISTICS</button>
-          <button class="mode-button" data-mode="RELIEF">RELIEF</button>
+        <div class="layer-controls">
+          <label><input type="checkbox" data-layer="population" checked> 人口・Accessibility</label>
+          <label><input type="checkbox" data-layer="routes" checked> GTFS路線</label>
+          <label><input type="checkbox" data-layer="stops" checked> 停留所</label>
+          <label><input type="checkbox" data-layer="facilities" checked> 病院</label>
         </div>
-        <div id="mode-summary" class="mode-summary">人口メッシュを分母に、指定リンク停止時の旅行時間変化を表示します。</div>
+        <div id="mode-summary" class="mode-summary">対象は大洲市「ぐるりんおおず」の停留所範囲周辺です。愛媛県全域の結果ではありません。</div>
       </div>
     </section>
 
@@ -79,68 +68,81 @@
       <div class="panel map-panel">
         <div class="map-toolbar">
           <div>
-            <p class="kicker">愛媛県全域 / Public Layer</p>
-            <h2 id="map-title">平常時と停止後の差</h2>
+            <p class="kicker">Ozu / Real-data vertical slice</p>
+            <h2 id="map-title">病院Accessibility — 平常時</h2>
           </div>
           <div class="legend" aria-label="地図の凡例">
-            <span><i class="legend-line road"></i>主要道路</span>
-            <span><i class="legend-dot population"></i>人口集約ゾーン</span>
-            <span><i class="legend-line selected"></i>選択中</span>
+            <span><i class="legend-line transit"></i>運行路線</span>
+            <span><i class="legend-line stopped"></i>停止対象路線</span>
+            <span><i class="legend-dot hospital"></i>病院</span>
+            <span><i class="legend-dot affected"></i>所要時間増</span>
           </div>
         </div>
-        <div id="map" role="application" aria-label="愛媛県交通ネットワーク地図">
-          <div class="map-loading">地図と公開成果物を読み込んでいます…</div>
+        <div id="map" role="application" aria-label="大洲市公共交通アクセシビリティ地図">
+          <div class="map-loading">実計算成果物を読み込んでいます…</div>
         </div>
         <div class="map-caption">
-          地図上の道路をクリックすると、D区分の停止仮定として選択できます。任意リンクの再計算は分析層で実行し、未計算状態を隠しません。
+          A：大洲市GTFS / B：簡易100m人口・OSM / C：Accessibilityモデル / D：右回り路線停止の仮定。人口点は100mセルの簡易按分値です。
         </div>
       </div>
+
       <aside class="panel insight-panel" aria-live="polite">
         <div class="panel-heading">
           <div>
             <p class="kicker">What changes?</p>
-            <h2>何が困る？</h2>
+            <h2>病院アクセスへの影響</h2>
           </div>
           <span id="result-state" class="status status-ok">計算済み</span>
         </div>
         <div id="metric-grid" class="metric-grid"></div>
         <div class="comparison">
-          <div class="comparison-header"><span>Before</span><span>After</span></div>
+          <div class="comparison-header"><span>平均所要時間 Before</span><span>After</span></div>
           <div class="comparison-bar"><span id="before-bar"></span><span id="after-bar"></span></div>
           <div id="comparison-text" class="comparison-text"></div>
         </div>
         <div class="insight-callout">
-          <strong id="insight-title">リンクを守る意味を比べる</strong>
-          <p id="insight-body">結果をクリックすると、使用データ、データ版、モデル、影響リンク、推計区分を確認できます。</p>
+          <strong id="insight-title">閾値だけでは見えない影響を見る</strong>
+          <p id="insight-body">30分・60分圏人口が変わらなくても、個別メッシュでは所要時間が増える場合があります。</p>
         </div>
       </aside>
     </section>
 
     <section class="detail-grid">
       <div class="panel">
-        <div class="panel-heading"><h2>どう戻す？</h2><span class="classification classification-d">Recovery</span></div>
-        <p id="recovery-copy">停止条件を解除した平常時結果をBeforeとして保持しています。復旧による回復量は、同じ入力版で比較します。</p>
-        <button id="recover" class="button button-primary">選択したリンクを復旧</button>
-      </div>
-      <div class="panel">
-        <div class="panel-heading"><h2>どこが重要？</h2><span class="classification classification-c">C 推計</span></div>
+        <div class="panel-heading"><h2>影響が大きい地域</h2><span class="classification classification-c">C 推計</span></div>
         <ol id="critical-list" class="critical-list"></ol>
       </div>
+
+      <div class="panel">
+        <div class="panel-heading"><h2>今回止めたもの</h2><span class="classification classification-d">D 仮定</span></div>
+        <p id="recovery-copy">右回り系統だけを停止する感度分析です。地震・豪雨等による実際の運休を予測したものではありません。</p>
+        <button id="recover" class="button button-primary" type="button">平常時へ戻す</button>
+      </div>
+
       <div class="panel provenance-panel">
         <div class="panel-heading"><h2>根拠を確認</h2><span class="classification classification-a">Provenance</span></div>
         <details open>
-          <summary>使用データとモデル</summary>
+          <summary>使用データ・モデル・計算条件</summary>
           <pre id="provenance"></pre>
         </details>
         <div id="limitations" class="limitations"></div>
       </div>
     </section>
+
+    <section class="panel next-stage">
+      <div class="panel-heading">
+        <div><p class="kicker">Next Gate</p><h2>A1.2ではここまで</h2></div>
+        <span class="status status-warn">範囲を拡大しない</span>
+      </div>
+      <p>道路閉鎖、Synthetic OD、交通量配分、物流、全県GTFS統合はこの画面では未計算です。次Stageで独立にGateを通して追加します。</p>
+    </section>
   </main>
 
   <footer class="site-footer">
-    <p><strong>分類：</strong>A 公式観測・実績 / B 公式統計加工 / C モデル推計 / D ユーザー仮定</p>
-    <p>公開データ：OSM、国土交通省R3道路交通センサス、国土数値情報R6 500m人口メッシュ。<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · <a href="docs/DATA_LICENSES.md">ライセンスと出典</a> · <a href="docs/SPECIFICATION.md">開発仕様書</a></p>
+    <p><strong>分類：</strong>A 公式データ / B 公式統計等に基づく加工・OSM / C モデル推計 / D ユーザー仮定</p>
+    <p>出典：大洲市「ぐるりんおおず」GTFS、地域・交通データ研究所 令和2年簡易100mメッシュ人口、OpenStreetMap。<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a> · <a href="docs/A1_1_MINIMAL_ACCESSIBILITY.md">分析仕様</a> · <a href="docs/A1_1_QA_REPORT.md">QA</a> · <a href="docs/DATA_LICENSES.md">ライセンス</a></p>
   </footer>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js"></script>
