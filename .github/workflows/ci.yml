@@ -1,8 +1,8 @@
-name: A0 Foundation CI and Pages
+name: Foundation / A1.1 CI and Pages
 
 on:
   push:
-    branches: [main, feature/a0-foundation-data-architecture]
+    branches: [main, feature/a0-foundation-data-architecture, feature/a1-1-minimal-accessibility]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -38,6 +38,18 @@ jobs:
         run: PYTHONPATH=src python scripts/validate/run_fixture_models.py
       - name: Check Python syntax
         run: python -m compileall -q src scripts admin
+
+  a1_source_probe:
+    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Probe selected real A1.1 sources
+        run: python scripts/ingest/probe_a1_sources.py
+
   web:
     runs-on: ubuntu-latest
     steps:
@@ -50,6 +62,7 @@ jobs:
           node --check web/app.js
           node web/tests/smoke.js
           python scripts/export_web/build_bundle.py
+
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: [python, web]
