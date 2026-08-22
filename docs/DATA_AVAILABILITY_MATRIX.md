@@ -16,7 +16,7 @@
 | Commuting OD | R2国勢調査市町村間通勤・通学OD | △ | A/B | 取得版・表番号・秘匿・県内詳細粒度が未確定 | 市町村間総量を固定する実ファイルを登録 |
 | Automobile OD | R3自動車起終点調査 | △ | A/B | 公開集計は都道府県間等で、県内細粒度ODではない | gateway制約として使用範囲を固定 |
 | Population | MLIT R6 500m + A1.1 simplified 100m | ○ | B | 100m値は簡易按分で実測セル人口ではない | A1.1は大洲市100m 5,478 rowsを実取得。分母の性質をUIに表示 |
-| Facilities | OSM + 将来の公式施設 | ○（A1.1）/ △（全県） | B | OSM登録状況・現行性 | A1.1はhospital/clinic/townhallを実取得。防災拠点病院等は公式一覧照合後に追加 |
+| Facilities | OSM + 将来の公式施設 | ○（A1.1）/ △（全県） | B | OSM登録状況・現行性 | A1.1はOSM `amenity=hospital` 7件を実取得。防災拠点病院等は公式一覧照合後に追加 |
 | Economic census | R3経済センサス500m・1km mesh | △ | B/C | 従業者は目的地魅力度でありトリップ量や在庫ではない | 実ファイル・表・産業分類を登録 |
 | Freight demand | 全国貨物純流動調査、道路交通センサス大型車 | △ | A/B/C | 県内細粒度貨物OD、在庫、企業間流動がない | 相対指標と絶対量を分離 |
 | Warehouses | Project LINKS、県公開施設 | △ | B | 個別ライセンス、項目、現行性、再配布が未確認 | dataset licenseと位置精度を個別確認 |
@@ -36,9 +36,10 @@
 1. 大洲市「ぐるりんおおず」GTFSを現行feedとして固定し、実データvalidatorと時刻依存計算をPASSした。
 2. GTFS停留所bbox周辺のOSM道路を徒歩ネットワークに変換し、37/37停留所をsnapした。
 3. 大洲市令和2年簡易100m人口を分母として1,840 population zonesを実計算に投入した。
-4. OSM施設を目的地にしてBaseline / Transit disruptionを比較した。
+4. OSMのhospital 7件を目的地にしてBaseline / Transit disruptionを比較した。
 5. A1.1の結果はC、停止条件はDとしてprovenanceを保存した。
+6. 固定30/60/90分閾値では差が出ない場合もあるため、影響人口・平均時間差等の連続指標を併記する必要性を確認した。
 
 ## 次のA1 Gate
 
-A1.1の成功をそのまま全県精度の証明とはしない。次のStepでは、対象GTFS・施設・人口範囲を追加する前に、A1.1の目的地定義、徒歩transfer、複数feed統合、shapes欠損の扱いを独立にレビューする。
+A1.1の成功をそのまま全県精度の証明とはしない。次のStepでは、対象GTFS・施設・人口範囲を追加する前に、公式目的地データへの置換、徒歩transfer、複数feed統合、shapes欠損、外部API retry/cacheを独立にレビューする。
