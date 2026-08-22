@@ -1,9 +1,9 @@
-"""Build the A1.3 planning-canvas WebGIS from verified A1.1 real-data outputs.
+"""Build the planning-canvas WebGIS from verified A1 real-data outputs.
 
 The source web directory contains application code and legacy fixtures. This
 builder creates a clean deployable site and replaces the public data folder with
-current A1.1 derived outputs. Raw third-party input archives are never copied to
-the public site.
+current derived outputs. Raw third-party input archives are never copied to the
+public site.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ REQUIRED_RESULTS = (
     "routes.geojson",
     "population_access.geojson",
 )
+SUPPORTED_RESULT_STAGES = {"A1.1", "A1.5"}
 
 
 def read_json(path: Path):
@@ -30,24 +31,34 @@ def read_json(path: Path):
 def validate_results(source: Path) -> dict:
     missing = [name for name in REQUIRED_RESULTS if not (source / name).exists()]
     if missing:
-        raise FileNotFoundError("A1.1 result is incomplete: " + ", ".join(missing))
+        raise FileNotFoundError("A1 result is incomplete: " + ", ".join(missing))
 
     summary = read_json(source / "summary.json")
-    if summary.get("stage") != "A1.1" or summary.get("status") != "computed":
-        raise ValueError("summary.json is not a completed A1.1 result")
+    if summary.get("stage") not in SUPPORTED_RESULT_STAGES or summary.get("status") != "computed":
+        raise ValueError("summary.json is not a completed supported A1 result")
     if summary.get("classification") != "C" or summary.get("scenario_classification") != "D":
-        raise ValueError("A1.1 classification contract is invalid")
+        raise ValueError("A1 classification contract is invalid")
     if summary.get("gtfs", {}).get("snapped_stops") != summary.get("gtfs", {}).get("stops"):
         raise ValueError("not all GTFS stops are snapped to the walking network")
     if summary.get("osm", {}).get("hospital_destinations", 0) < 1:
-        raise ValueError("A1.1 has no hospital destinations")
+        raise ValueError("A1 has no hospital destinations")
+    if summary.get("stage") == "A1.5":
+        registry = summary.get("official_registry", {})
+        if registry.get("verified_osm_hospitals", 0) < 1:
+            raise ValueError("A1.5 has no official-registry-verified OSM hospitals")
+        if registry.get("raw_workbook_published") is not False:
+            raise ValueError("A1.5 must not publish the raw official workbook")
     if summary.get("population", {}).get("zones_in_envelope", 0) < 1:
-        raise ValueError("A1.1 has no population zones")
+        raise ValueError("A1 has no population zones")
 
     for name in ("stops.geojson", "facilities.geojson", "routes.geojson", "population_access.geojson"):
         payload = read_json(source / name)
         if payload.get("type") != "FeatureCollection" or not payload.get("features"):
             raise ValueError(f"{name} is not a non-empty FeatureCollection")
+    facilities = read_json(source / "facilities.geojson")
+    if summary.get("stage") == "A1.5":
+        if not all((feature.get("properties") or {}).get("officially_verified") is True for feature in facilities["features"]):
+            raise ValueError("public A1.5 facilities contain an unverified hospital")
     return summary
 
 
@@ -96,6 +107,7 @@ def build(source: Path, web: Path, destination: Path) -> dict:
             "weighted-travel-time-distribution",
             "single-validated-recovery-action",
             "provenance-and-limitations",
+            "official-hospital-verification-gate" if summary["stage"] == "A1.5" else "osm-hospital-destinations",
         ],
         "public_limitations": summary.get("provenance", {}).get("limitations", []),
     }
@@ -112,26 +124,37 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "A1_2_QA_REPORT.md",
         "A1_3_IDEAL_UI.md",
         "A1_3_QA_REPORT.md",
+        "A1_4_MOBILE_UX.md",
+        "A1_4_QA_REPORT.md",
+        "A1_5_OFFICIAL_HOSPITAL_GATE.md",
+        "A1_5_QA_REPORT.md",
         "DATA_LICENSES.md",
     ):
         src = ROOT / "docs" / name
         if src.exists():
             shutil.copy2(src, docs_out / name)
 
-    print(json.dumps({
-        "stage": "A1.3",
-        "destination": str(destination),
-        "gtfs_stops": summary["gtfs"]["stops"],
-        "population_zones": summary["population"]["zones_in_envelope"],
-        "hospital_destinations": summary["osm"]["hospital_destinations"],
-        "affected_population": summary["impact"]["population_with_gt_1min_increase"],
-    }, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "stage": "A1.3",
+                "result_stage": summary["stage"],
+                "destination": str(destination),
+                "gtfs_stops": summary["gtfs"]["stops"],
+                "population_zones": summary["population"]["zones_in_envelope"],
+                "hospital_destinations": summary["osm"]["hospital_destinations"],
+                "affected_population": summary["impact"]["population_with_gt_1min_increase"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return manifest
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", type=Path, default=ROOT / "outputs" / "a1_1")
+    parser.add_argument("--source", type=Path, default=ROOT / "outputs" / "a1_5")
     parser.add_argument("--web", type=Path, default=ROOT / "web")
     parser.add_argument("--destination", type=Path, default=ROOT / "_site")
     args = parser.parse_args()
