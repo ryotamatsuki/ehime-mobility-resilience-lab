@@ -30,13 +30,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def mesh100m_center(meshcode: str) -> tuple[float, float]:
-    """Return the WGS84-like centre of a Japanese 10-digit 100 m mesh cell.
-
-    10-digit mesh codes subdivide the standard 1 km third mesh into ten parts
-    north-south and east-west. Returned coordinates are suitable for the public
-    census-derived mesh used in A1; no claim of survey-grade precision is made.
-    """
-
+    """Return the WGS84-like centre of a Japanese 10-digit 100 m mesh cell."""
     code = str(meshcode).strip()
     if len(code) != 10 or not code.isdigit():
         raise ValueError(f"expected 10-digit mesh code, got {meshcode!r}")
@@ -128,10 +122,7 @@ class CoordinateIndex:
             candidates = list(self.coordinates)
         if not candidates:
             raise ValueError("walking graph has no nodes")
-        best = min(
-            candidates,
-            key=lambda node: haversine_km(lat, lon, self.coordinates[node][0], self.coordinates[node][1]),
-        )
+        best = min(candidates, key=lambda node: haversine_km(lat, lon, *self.coordinates[node]))
         best_lat, best_lon = self.coordinates[best]
         return best, haversine_km(lat, lon, best_lat, best_lon)
 
@@ -152,22 +143,17 @@ def extract_facilities(overpass: dict[str, Any], allowed: set[str] | None = None
                 continue
             lat = sum(float(point["lat"]) for point in geometry) / len(geometry)
             lon = sum(float(point["lon"]) for point in geometry) / len(geometry)
-        facilities.append(
-            {
-                "id": f"osm:{element.get('type')}:{element.get('id')}",
-                "name": tags.get("name") or tags.get("name:ja") or amenity,
-                "amenity": amenity,
-                "lat": lat,
-                "lon": lon,
-            }
-        )
+        facilities.append({
+            "id": f"osm:{element.get('type')}:{element.get('id')}",
+            "name": tags.get("name") or tags.get("name:ja") or amenity,
+            "amenity": amenity,
+            "lat": lat,
+            "lon": lon,
+        })
     return facilities
 
 
-def min_walk_minutes_to_facility(
-    graph: DirectedGraph,
-    facility_nodes: Iterable[str],
-) -> dict[str, float]:
+def min_walk_minutes_to_facility(graph: DirectedGraph, facility_nodes: Iterable[str]) -> dict[str, float]:
     minimum = {node: math.inf for node in graph.nodes}
     for facility_node in sorted(set(facility_nodes)):
         distances, _ = graph.dijkstra(facility_node)
@@ -177,10 +163,7 @@ def min_walk_minutes_to_facility(
     return minimum
 
 
-def stop_walk_times(
-    graph: DirectedGraph,
-    stop_nodes: dict[str, str],
-) -> dict[str, dict[str, float]]:
+def stop_walk_times(graph: DirectedGraph, stop_nodes: dict[str, str]) -> dict[str, dict[str, float]]:
     result: dict[str, dict[str, float]] = {}
     for stop_id, node in sorted(stop_nodes.items()):
         result[stop_id] = graph.dijkstra(node)[0]
@@ -194,14 +177,7 @@ def stop_transfer_edges(
     max_walk_minutes: float = 10.0,
     transfer_buffer_minutes: float = 1.0,
 ) -> dict[str, list[dict[str, float | str]]]:
-    """Build directed stop-to-stop walking transfers from network distances.
-
-    The walk threshold applies to the actual network walk only. A fixed transfer
-    buffer is added after the walk to represent wayfinding/boarding margin. The
-    returned graph contains direct pairwise transfers only; the routing kernel
-    does not recursively chain walking transfers, preventing a sequence of short
-    stop hops from bypassing the configured maximum transfer walk.
-    """
+    """Build direct directed stop-to-stop walking transfers from network distances."""
     if max_walk_minutes < 0 or transfer_buffer_minutes < 0:
         raise ValueError("transfer walk and buffer must be non-negative")
     result: dict[str, list[dict[str, float | str]]] = {}
@@ -213,13 +189,11 @@ def stop_transfer_edges(
             walk_minutes = float(node_distances.get(to_node, math.inf))
             if not math.isfinite(walk_minutes) or walk_minutes > max_walk_minutes:
                 continue
-            edges.append(
-                {
-                    "to_stop": str(to_stop),
-                    "walk_minutes": round(walk_minutes, 6),
-                    "transfer_minutes": round(walk_minutes + transfer_buffer_minutes, 6),
-                }
-            )
+            edges.append({
+                "to_stop": str(to_stop),
+                "walk_minutes": round(walk_minutes, 6),
+                "transfer_minutes": round(walk_minutes + transfer_buffer_minutes, 6),
+            })
         if edges:
             result[str(from_stop)] = edges
     return result
@@ -235,10 +209,12 @@ def earliest_arrival_minutes(
     facility_walk_by_node: dict[str, float],
     stop_nodes: dict[str, str],
     disabled_routes: set[str] | None = None,
+    disabled_trips: set[str] | None = None,
     max_access_walk_minutes: float = 20.0,
     stop_transfers: dict[str, list[dict[str, float | str]]] | None = None,
 ) -> float:
     disabled_routes = disabled_routes or set()
+    disabled_trips = disabled_trips or set()
     stop_transfers = stop_transfers or {}
     direct = facility_walk_by_node.get(zone_node, math.inf)
     arrival: dict[str, int] = {}
@@ -248,8 +224,6 @@ def earliest_arrival_minutes(
             arrival[stop_id] = departure_seconds + int(round(walk_minutes * 60.0))
 
     def relax_one_transfer(from_stop: str, from_arrival_seconds: int) -> None:
-        # One transfer layer only. Transfer-derived arrivals are deliberately not
-        # recursively expanded into another walking transfer.
         for edge in stop_transfers.get(from_stop, []):
             to_stop = str(edge["to_stop"])
             transfer_seconds = int(round(float(edge["transfer_minutes"]) * 60.0))
@@ -259,7 +233,7 @@ def earliest_arrival_minutes(
 
     for connection in sorted(connections, key=lambda item: (item["departure_seconds"], item["arrival_seconds"])):
         trip_id = str(connection["trip_id"])
-        if trip_routes.get(trip_id) in disabled_routes:
+        if trip_id in disabled_trips or trip_routes.get(trip_id) in disabled_routes:
             continue
         from_stop = str(connection["from_stop"])
         to_stop = str(connection["to_stop"])
