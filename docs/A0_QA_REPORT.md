@@ -39,7 +39,7 @@ A0文書・構成・データ実現可能性の受入判定：PASS WITH WARNINGS
 
 ## Warnings
 
-1. GitHub Pagesの公開URL、Actions実行、Pages設定はA0のGitHub保存後に確認する。
+1. GitHub Actions PR #1 の最新run #7はPython・WebともにPASSした。Pages deployはmain限定ガードによりSKIPであり、Draft PRからは公開されない。A0ではmainを変更していないため、GitHub Pagesの公開URLは未発行・未確認である。
 2. 国勢調査市町村OD、経済センサス、物流センサス、現行の救援施設位置は、A0の設計入力として確認したが、公開bundleの計算入力としては未取得または未確定である。
 3. 先行して作成したA1相当コードを含むため、A0の作業コピーには準備的な実装が存在する。ただし、本報告後にA1の機能追加は行わず、次Stageの開始条件として凍結する。
 4. R3道路交通センサスの取得ファイル、OSM原JSON、人口mesh ZIPはローカル再現用であり、公開リポジトリへ生データを無条件にcommitしない。
@@ -74,3 +74,11 @@ A0文書・構成・データ実現可能性の受入判定：PASS WITH WARNINGS
 4. その後にSynthetic ODを、観測市町村ODと区分Cの細粒度分解として実装する。
 
 この報告をもってA0で停止し、A1実装は次のユーザー指示を待つ。
+
+## GitHub確認記録
+
+- Repository: `https://github.com/ryotamatsuki/ehime-mobility-resilience-lab`
+- Pull Request: `#1`、Draft、open、未merge
+- main: A0開始時から未変更
+- PR Actions: run #7、Python PASS、Web PASS、Deploy SKIPPED（main限定）
+- GitHub Pages: A0では公開未実施。main統合後のRelease手順で確認する
