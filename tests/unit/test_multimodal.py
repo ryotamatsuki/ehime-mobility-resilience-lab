@@ -43,7 +43,9 @@ def test_connection_scan_respects_disabled_route():
         ],
         trip_routes={"t1": "r1"},
         stop_walk={"s1": {"zone": 3.0}, "s2": {"zone": 99.0}},
-        facility_walk_by_node={"zone": 40.0, "n1": 30.0, "n2": 4.0},
+        # Keep the synthetic walk distances internally consistent: walking via
+        # s1 must not be shorter than the declared direct 40-minute path.
+        facility_walk_by_node={"zone": 40.0, "n1": 50.0, "n2": 4.0},
         stop_nodes={"s1": "n1", "s2": "n2"},
         disabled_routes={"r1"},
     )
