@@ -4,12 +4,13 @@ const path = require("path");
 const repoRoot = path.resolve(__dirname, "..", "..");
 const target = process.argv[2] ? path.resolve(repoRoot, process.argv[2]) : path.join(repoRoot, "web");
 
-for (const name of ["index.html", "app.js", "styles.css"]) {
+for (const name of ["index.html", "app.js", "styles.css", "mobile.css"]) {
   if (!fs.existsSync(path.join(target, name))) throw new Error("missing frontend artifact: " + path.join(target, name));
 }
 
 const html = fs.readFileSync(path.join(target, "index.html"), "utf8");
 const app = fs.readFileSync(path.join(target, "app.js"), "utf8");
+const mobile = fs.readFileSync(path.join(target, "mobile.css"), "utf8");
 
 const requiredMarkers = [
   "交通レジリエンス・プランニングキャンバス",
@@ -35,6 +36,20 @@ for (const truthfulMarker of ["未計算", "disabled", "実被害予測", "D 停
   if (!html.includes(truthfulMarker) && !app.includes(truthfulMarker)) throw new Error("missing truthful-scope marker: " + truthfulMarker);
 }
 
+const mobileContracts = [
+  'href="mobile.css"',
+  "max-device-width: 900px",
+  "flex-direction: column",
+  ".builder-pane .future-section { display: none; }",
+  "min-height: 48px",
+  "order: 2",
+  "order: 3"
+];
+for (const marker of mobileContracts) {
+  if (!html.includes(marker) && !mobile.includes(marker)) throw new Error("missing A1.4 mobile contract: " + marker);
+}
+if (!html.includes("viewport-fit=cover")) throw new Error("mobile viewport safe-area contract missing");
+
 const dataDir = path.join(target, "data");
 const generatedSummary = path.join(dataDir, "summary.json");
 if (fs.existsSync(generatedSummary)) {
@@ -57,4 +72,4 @@ if (fs.existsSync(generatedSummary)) {
   if (!(summary.impact.population_with_gt_1min_increase > 0)) throw new Error("stress test has no measurable travel-time impact");
 }
 
-console.log("A1.3 planning-canvas smoke test passed for " + target);
+console.log("A1.4 planning-canvas smoke test passed for " + target);
