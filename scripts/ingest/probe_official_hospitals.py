@@ -1,85 +1,76 @@
-"""Probe the official Ehime medical basic-information workbook without persisting it.
+"""Compact schema probe for Ehime's official medical-information workbook.
 
-The workbook is published by Ehime Prefecture Medical Policy Division and is
-used only to inspect schema/values for A1.5.  Raw bytes are not written to the
-repository or uploaded as an artifact.
+The workbook is downloaded transiently.  The probe prints only schema/count
+metadata: it must not echo facility rows, names, addresses or coordinates into
+GitHub Actions logs.
 """
 from __future__ import annotations
 
-import io
 import json
+import sys
 import urllib.request
-import zipfile
-from xml.etree import ElementTree as ET
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+
+from accessibility.official_facilities import workbook_records
 
 URL = "https://www.pref.ehime.jp/uploaded/attachment/188120.xlsx"
 LANDING = "https://www.pref.ehime.jp/page/50405.html"
-NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main", "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
-PKG = {"p": "http://schemas.openxmlformats.org/package/2006/relationships"}
+REQUIRED = {
+    "機関コード",
+    "機関区分",
+    "活動区分",
+    "正式名称",
+    "略称",
+    "所在地座標（緯度）",
+    "所在地座標（経度）",
+}
 
 
 def fetch() -> bytes:
-    req = urllib.request.Request(URL, headers={"User-Agent": "EhimeMobilityResilienceLab/0.1 (+GitHub Actions)"})
-    with urllib.request.urlopen(req, timeout=120) as response:
+    request = urllib.request.Request(
+        URL,
+        headers={"User-Agent": "EhimeMobilityResilienceLab/0.1 (+GitHub Actions)"},
+    )
+    with urllib.request.urlopen(request, timeout=120) as response:
         return response.read()
-
-
-def shared_strings(zf: zipfile.ZipFile) -> list[str]:
-    try:
-        root = ET.fromstring(zf.read("xl/sharedStrings.xml"))
-    except KeyError:
-        return []
-    out: list[str] = []
-    for si in root.findall("m:si", NS):
-        out.append("".join((t.text or "") for t in si.findall(".//m:t", NS)))
-    return out
-
-
-def sheet_targets(zf: zipfile.ZipFile) -> list[tuple[str, str]]:
-    workbook = ET.fromstring(zf.read("xl/workbook.xml"))
-    rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
-    relmap = {rel.attrib["Id"]: rel.attrib["Target"] for rel in rels.findall("p:Relationship", PKG)}
-    out = []
-    for sheet in workbook.findall("m:sheets/m:sheet", NS):
-        rid = sheet.attrib[f"{{{NS['r']}}}id"]
-        target = relmap[rid].lstrip("/")
-        if not target.startswith("xl/"):
-            target = "xl/" + target
-        out.append((sheet.attrib.get("name", rid), target))
-    return out
-
-
-def cell_value(cell: ET.Element, strings: list[str]) -> str:
-    typ = cell.attrib.get("t")
-    if typ == "inlineStr":
-        return "".join((t.text or "") for t in cell.findall(".//m:t", NS))
-    value = cell.findtext("m:v", default="", namespaces=NS)
-    if typ == "s" and value:
-        return strings[int(value)]
-    return value
-
-
-def rows(zf: zipfile.ZipFile, target: str, strings: list[str], limit: int = 25) -> list[list[str]]:
-    root = ET.fromstring(zf.read(target))
-    out: list[list[str]] = []
-    for row in root.findall(".//m:sheetData/m:row", NS):
-        vals = [cell_value(cell, strings).strip() for cell in row.findall("m:c", NS)]
-        if any(vals):
-            out.append(vals)
-        if len(out) >= limit:
-            break
-    return out
 
 
 def main() -> None:
     payload = fetch()
-    with zipfile.ZipFile(io.BytesIO(payload)) as zf:
-        strings = shared_strings(zf)
-        sheets = []
-        for name, target in sheet_targets(zf):
-            sample = rows(zf, target, strings)
-            sheets.append({"name": name, "target": target, "sample_rows": sample})
-    print(json.dumps({"landing": LANDING, "bytes": len(payload), "sheets": sheets}, ensure_ascii=False, indent=2))
+    records = workbook_records(payload)
+    if not records:
+        raise SystemExit("official medical workbook has no records")
+    columns = set(records[0])
+    missing = sorted(REQUIRED - columns)
+    if missing:
+        raise SystemExit("official medical workbook missing required columns: " + ", ".join(missing))
+    active_hospitals = [
+        row for row in records if row.get("機関区分") == "1" and row.get("活動区分") == "活動中"
+    ]
+    with_coordinates = [
+        row
+        for row in active_hospitals
+        if row.get("所在地座標（緯度）") and row.get("所在地座標（経度）")
+    ]
+    print(
+        json.dumps(
+            {
+                "landing": LANDING,
+                "download_ok": True,
+                "bytes": len(payload),
+                "records": len(records),
+                "active_hospitals": len(active_hospitals),
+                "active_hospitals_with_coordinates": len(with_coordinates),
+                "required_schema_ok": True,
+                "raw_rows_logged": False,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":
