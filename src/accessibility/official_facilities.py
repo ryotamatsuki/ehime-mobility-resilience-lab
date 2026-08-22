@@ -1,8 +1,8 @@
 """Helpers for verifying public OSM hospital points against an official registry.
 
-The official workbook is used transiently as a verification source.  These
+The official workbook is used transiently as a verification source. These
 helpers deliberately return only the minimum internal fields needed to match
-records.  Public facility geometry remains sourced from OSM so the workbook is
+records. Public facility geometry remains sourced from OSM so the workbook is
 not republished through the GitHub Pages bundle.
 """
 from __future__ import annotations
@@ -81,8 +81,7 @@ def workbook_records(payload: bytes) -> list[dict[str, str]]:
                 raw_rows.append(values)
         if not raw_rows:
             return []
-        header_row = raw_rows[0]
-        headers = {index: value for index, value in header_row.items() if value}
+        headers = {index: value for index, value in raw_rows[0].items() if value}
         records: list[dict[str, str]] = []
         for row in raw_rows[1:]:
             record = {header: row.get(index, "") for index, header in headers.items()}
@@ -158,10 +157,10 @@ def _name_compatible(osm_name: str, official: dict[str, Any]) -> bool:
         normalize_facility_name(str(official.get("short_name", ""))),
     }
     candidates.discard("")
-    for candidate in candidates:
-        if osm_norm == candidate or osm_norm in candidate or candidate in osm_norm:
-            return True
-    return False
+    return any(
+        osm_norm == candidate or osm_norm in candidate or candidate in osm_norm
+        for candidate in candidates
+    )
 
 
 def verify_osm_hospitals(
@@ -171,43 +170,46 @@ def verify_osm_hospitals(
     named_max_km: float = 0.35,
     unnamed_max_km: float = 0.12,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Keep only OSM hospital points that can be verified against official records.
+    """Return a one-to-one set of OSM hospitals verified by official records.
 
-    Named points require spatial proximity plus compatible names.  Unnamed OSM
-    hospital features are accepted only under a much tighter spatial threshold.
-    Official identifiers/names are never copied into the returned public items.
+    OSM can contain multiple representations of one hospital (for example a
+    node and a building way). Candidate pairs are therefore assigned one-to-one:
+    named compatible matches are preferred, then unnamed features under a tight
+    distance threshold. Official identifiers/names are never copied into public
+    output records.
     """
-    verified: list[dict[str, Any]] = []
-    used_official: set[int] = set()
-    for facility in osm_facilities:
+    candidates: list[tuple[int, float, int, int]] = []
+    for osm_index, facility in enumerate(osm_facilities):
         name = str(facility.get("name", "") or "")
-        ranked: list[tuple[float, int, dict[str, Any]]] = []
-        for index, record in enumerate(official):
+        normalized = normalize_facility_name(name)
+        named = bool(normalized) and normalized != "hospital"
+        for official_index, record in enumerate(official):
             distance = haversine_km(
                 float(facility["lat"]),
                 float(facility["lon"]),
                 float(record["lat"]),
                 float(record["lon"]),
             )
-            ranked.append((distance, index, record))
-        ranked.sort(key=lambda item: item[0])
-        if not ranked:
+            if named:
+                if distance <= named_max_km and _name_compatible(name, record):
+                    candidates.append((0, distance, osm_index, official_index))
+            elif distance <= unnamed_max_km:
+                candidates.append((1, distance, osm_index, official_index))
+
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    used_osm: set[int] = set()
+    used_official: set[int] = set()
+    verified: list[dict[str, Any]] = []
+    for _, distance, osm_index, official_index in candidates:
+        if osm_index in used_osm or official_index in used_official:
             continue
-        distance, official_index, record = ranked[0]
-        named = bool(normalize_facility_name(name)) and normalize_facility_name(name) != "hospital"
-        accepted = (
-            named and distance <= named_max_km and _name_compatible(name, record)
-        ) or (
-            not named and distance <= unnamed_max_km
-        )
-        if not accepted:
-            continue
-        item = dict(facility)
+        item = dict(osm_facilities[osm_index])
         item["officially_verified"] = True
         item["verification_distance_km"] = round(distance, 4)
-        # Do not copy official identifiers, names, addresses or coordinates.
         verified.append(item)
+        used_osm.add(osm_index)
         used_official.add(official_index)
+
     stats = {
         "official_hospitals_in_envelope": len(official),
         "osm_hospitals_in_envelope": len(osm_facilities),
