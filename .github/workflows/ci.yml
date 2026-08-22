@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-3-ideal-planning-canvas-ui]
+    branches: [main, feature/a1-3-ideal-planning-canvas-ui, feature/a1-5-official-hospital-gate]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -64,6 +64,8 @@ jobs:
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
+      - name: Probe official Ehime medical registry schema
+        run: python scripts/ingest/probe_official_hospitals.py
 
   a1_real_accessibility:
     needs: [python, web_source, a1_source_probe]
