@@ -1,0 +1,25 @@
+[project]
+name = "ehime-mobility-resilience-lab"
+version = "0.1.0"
+description = "Transparent public-transport-centered mobility resilience stress testing for Ehime."
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+gis = ["shapely>=2.0", "pyproj>=3.6"]
+admin = ["streamlit>=1.35"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"

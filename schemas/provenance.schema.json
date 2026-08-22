@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provenance",
+  "type": "object",
+  "required": ["schema_version", "artifact_id", "classification", "model_version", "generated_at_utc", "parameters"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "artifact_id": {"type": "string"},
+    "classification": {"enum": ["A", "B", "C", "D"]},
+    "input_data_versions": {"type": "array"},
+    "model_version": {"type": "string"},
+    "scenario_id": {"type": ["string", "null"]},
+    "parameters": {"type": "object"},
+    "generated_at_utc": {"type": "string"},
+    "git_sha": {"type": ["string", "null"]},
+    "random_seed": {"type": ["integer", "null"]},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

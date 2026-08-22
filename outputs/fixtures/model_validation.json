@@ -1,0 +1,93 @@
+{
+  "provenance": {
+    "schema_version": "1.0.0",
+    "artifact_id": "deterministic-model-fixtures",
+    "classification": "C",
+    "input_data_versions": [],
+    "model_version": "model-fixture-v0.1.0",
+    "scenario_id": null,
+    "parameters": {
+      "seed": 0,
+      "ordering": "lexicographic"
+    },
+    "generated_at_utc": "2026-08-22T04:06:55+00:00",
+    "git_sha": "778708d89323844b760cd31b2f854d6b2dc4981c",
+    "random_seed": 0,
+    "limitations": [
+      "Fixture results are not official Ehime measurements."
+    ]
+  },
+  "od": {
+    "classification": "C",
+    "origins": [
+      "a",
+      "b"
+    ],
+    "destinations": [
+      "x",
+      "y"
+    ],
+    "matrix": {
+      "a|x": 2.686760449088715,
+      "a|y": 2.313239550841539,
+      "b|x": 1.3132395509112844,
+      "b|y": 1.6867604491584614
+    },
+    "row_totals": {
+      "a": 4.999999999930254,
+      "b": 3.000000000069746
+    },
+    "column_totals": {
+      "x": 3.9999999999999996,
+      "y": 4.0
+    },
+    "total": 8.0,
+    "constraints": "fixture margins only; not Ehime observed OD"
+  },
+  "traffic": {
+    "classification": "C",
+    "baseline_volumes": {
+      "ab": 50.0,
+      "bc": 50.0,
+      "ac": 0.0
+    },
+    "closure_volumes": {
+      "ab": 0.0,
+      "bc": 0.0,
+      "ac": 50.0
+    },
+    "closure_unreachable_demand": 0.0,
+    "parameters": {
+      "alpha": 0.15,
+      "beta": 4.0,
+      "iterations": 25,
+      "method": "deterministic MSA approximation"
+    },
+    "validation_fixture": {
+      "observed": {
+        "ab": 45.0,
+        "bc": 45.0,
+        "ac": 5.0
+      },
+      "calibration_ids": [
+        "ac",
+        "bc"
+      ],
+      "holdout_ids": [
+        "ab"
+      ],
+      "metrics": {
+        "link_count": 3,
+        "geh_lt_5_share": 100.0,
+        "mape_pct": 40.74074074074075,
+        "wape_pct": 15.789473684210526,
+        "rmse": 5.0,
+        "model_vkt": 100.0,
+        "observed_vkt": 105.0
+      }
+    },
+    "limitations": [
+      "Synthetic fixture only; not a calibration result for Ehime."
+    ]
+  }
+}

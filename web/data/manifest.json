@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1.0.0",
+  "generated_at": "2026-08-22",
+  "git_sha": null,
+  "artifacts": [
+    {
+      "path": "network.geojson.gz",
+      "format": "gzip+geojson",
+      "classification": "B",
+      "status": "available"
+    },
+    {
+      "path": "population_zones.geojson",
+      "classification": "B",
+      "status": "available"
+    },
+    {
+      "path": "road_census_summary.json",
+      "classification": "A",
+      "status": "available"
+    },
+    {
+      "path": "metrics.json",
+      "classification": "C",
+      "status": "available"
+    }
+  ],
+  "blocked": [
+    "Phase B hazard GIS",
+    "unlicensed or unauthenticated GTFS raw feed"
+  ],
+  "public_limitations": [
+    "This is a stress test, not a real damage forecast.",
+    "Traffic assignment, freight and relief modules show not_computed until required inputs are licensed and available."
+  ]
+}

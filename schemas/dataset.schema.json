@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dataset Registry",
+  "type": "object",
+  "required": ["schema_version", "datasets"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "datasets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dataset_id", "source", "license", "status", "confidence"],
+        "properties": {
+          "dataset_id": {"type": "string"},
+          "source": {"type": "string"},
+          "license": {"type": "string"},
+          "status": {"enum": ["planned_input", "external_input", "active", "blocked", "archived"]},
+          "confidence": {"enum": ["A", "B", "C", "D"]}
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
