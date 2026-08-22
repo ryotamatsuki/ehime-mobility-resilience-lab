@@ -7,7 +7,6 @@ const required = [
   "web/app.js",
   "web/styles.css",
   "web/data/manifest.json",
-  "web/data/network.geojson",
   "web/data/population_zones.geojson",
   "web/data/metrics.json"
 ];
@@ -16,6 +15,10 @@ for (const file of required) {
   if (!fs.existsSync(path.join(root, file))) {
     throw new Error("missing frontend artifact: " + file);
   }
+}
+const networkCandidates = ["web/data/network.geojson", "web/data/network.geojson.gz"];
+if (!networkCandidates.some((file) => fs.existsSync(path.join(root, file)))) {
+  throw new Error("missing frontend artifact: network.geojson or network.geojson.gz");
 }
 
 const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
