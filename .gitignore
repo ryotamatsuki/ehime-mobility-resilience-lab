@@ -1,0 +1,35 @@
+# Python and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Static build output
+_site/
+dist/
+build/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+
+# Acquisition and analysis working areas
+data/raw/*
+!data/raw/.gitkeep
+data/staging/*
+!data/staging/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
