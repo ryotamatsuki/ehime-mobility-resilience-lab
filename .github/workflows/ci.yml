@@ -1,8 +1,8 @@
-name: A1 Real Accessibility / WebGIS
+name: A1 Real Accessibility / Planning Canvas
 
 on:
   push:
-    branches: [main, feature/a1-2-accessibility-webgis-demo]
+    branches: [main, feature/a1-3-ideal-planning-canvas-ui]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Check A1.2 source UI
+      - name: Check A1.3 source UI
         run: |
           test -f web/index.html
           test -f web/app.js
@@ -97,17 +97,24 @@ jobs:
           assert result['impact']['population_with_gt_1min_increase'] > 0
           print(json.dumps(result['impact'], ensure_ascii=False, indent=2))
           PY
-      - name: Build A1.2 static WebGIS
+      - name: Build A1.3 planning canvas
         run: python scripts/export_web/build_a1_2_demo.py --source outputs/a1_1 --destination _site
-      - name: Validate generated A1.2 WebGIS
+      - name: Validate generated A1.3 planning canvas
         run: |
           node --check _site/app.js
           node web/tests/smoke.js _site
           test ! -e _site/data/network.geojson.gz
           test ! -e _site/data/metrics.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('_site/data/manifest.json').read_text())
+          assert manifest['stage'] == 'A1.3'
+          assert 'three-pane-planning-canvas' in manifest['ui_capabilities']
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-2-real-accessibility-webgis
+          name: a1-3-planning-canvas
           path: |
             outputs/a1_1
             _site
