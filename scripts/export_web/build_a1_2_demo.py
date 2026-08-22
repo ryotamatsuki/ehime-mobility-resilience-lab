@@ -192,10 +192,7 @@ def apply_result_specific_labels(destination: Path, summary: dict, criticality: 
         "道路・施設位置：OpenStreetMap（B）／病院照合：愛媛県公式台帳（A）",
     )
     if stage == "A1.9":
-        html = html.replace(
-            "病院・停留所",
-            "病院・避難所・停留所",
-        )
+        html = html.replace("病院・停留所", "病院・避難所・停留所")
     if stage in TRANSFER_STAGES:
         html = html.replace(
             "<div><dt>分析範囲</dt><dd>GTFS停留所bbox周辺</dd></div>",
@@ -276,7 +273,7 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         capabilities.extend([
             "official-shelter-registry", "shelter-location-verification-gate",
             "emergency-shelter-accessibility", "general-shelter-accessibility",
-            "welfare-shelter-accessibility", "shelter-map-layer",
+            "welfare-shelter-accessibility", "shelter-public-geojson",
         ])
 
     manifest = {
