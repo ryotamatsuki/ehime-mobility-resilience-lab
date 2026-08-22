@@ -10,8 +10,8 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-GTFS_URL = "https://www.city.iyo.lg.jp/keizaikoyou/matidukuri/documents/agency.zip"
-POP_URL = "https://gtfs-gis.jp/data/100m_pop2020/38/100m_mesh_pop2020_38210.zip"
+GTFS_URL = "https://www.city.ozu.ehime.jp/uploaded/attachment/47696.zip"
+POP_URL = "https://gtfs-gis.jp/data/100m_pop2020/38/100m_mesh_pop2020_38207.zip"
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 REQUIRED_GTFS = {"stops.txt", "routes.txt", "trips.txt", "stop_times.txt"}
 
