@@ -7,7 +7,7 @@
 | dataset | source | url | license | reference_date | spatial_resolution | format | CRS | update_frequency | usage | confidence | notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | OSM Ehime major roads | OpenStreetMap / Overpass | https://www.openstreetmap.org/copyright | ODbL 1.0 | 取得スナップショット | 道路way | Overpass JSON / GeoJSON | WGS84 | 取得時点 | 道路グラフ、経路・閉鎖Stress Test | B | 県内 trunk・primary・secondary の縮約。抽出日時・クエリ・attributionを保存 |
-| OSM Ozu A1.1 walking / facilities | OpenStreetMap / Overpass | https://www.openstreetmap.org/copyright | ODbL 1.0 | CI取得時点 | GTFS stop bbox + 0.02° | Overpass JSON | WGS84 | 取得時点 | A1.1徒歩routing、hospital/clinic/townhall | B | Raw抽出物はcommitせずCI一時入力。2026-08-22実行でwalking graph 38,860 nodes / 80,102 directed edges |
+| OSM Ozu A1.1 walking / hospitals | OpenStreetMap / Overpass | https://www.openstreetmap.org/copyright | ODbL 1.0 | CI取得時点 | GTFS stop bbox + 0.02° | Overpass JSON | WGS84 | 取得時点 | A1.1徒歩routing、hospital accessibility | B | Raw抽出物はcommitせずCI一時入力。成功runでwalking graph 38,860 nodes / 80,102 directed edges、hospital 7件。公式病院台帳ではない |
 | R3 road census Ehime | 国土交通省 道路交通センサス | https://www.mlit.go.jp/road/census/r3/index.html | 国土交通省利用規約・個別条件 | 2021年度 | 調査区間・地点 | CSV | 表データ | 調査周期 | 観測交通量、校正・holdout | A | kasyo38.csv と zkntrf38.csv を取得。道路リンク対応はB加工値 |
 | R6 future population mesh 500m | 国土交通省 国土数値情報 | https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-mesh500r6.html | CC BY 4.0 | 2020 Census基準、2025等推計 | 500m mesh | GeoJSON / ZIP | JGD2011 | 公開更新時 | 人口、年齢、到達可能人口の分母 | B | Ehime zipを取得。公開用は集約成果物に縮約 |
 | R2 simplified population mesh 100m Ozu | 地域・交通データ研究所 | https://gtfs-gis.jp/teikyo/ | CC BY | 2020国勢調査250mを簡易按分 | 100m mesh | CSV / Shapefile ZIP | mesh / GIS | 公開更新時 | A1.1人口分母 | B | 5,478 rows。実100mセル人口ではなく簡易按分値。A1.1 envelopeで1,840 cellsを使用 |
@@ -31,7 +31,7 @@
 - R6 500m将来人口メッシュのEhime GeoJSON ZIPを取得し、7,857 featureを確認した。
 - A1.1では大洲市「ぐるりんおおず」GTFS version 5.0を実取得し、37 stops、4 routes、11 trips、2026-04-01〜2027-03-31の有効期間を確認した。
 - A1.1では大洲市の令和2年簡易100m人口5,478 rowsを実取得した。
-- A1.1ではGTFS停留所範囲に絞ってOSM徒歩道路・施設をCI取得し、実Accessibilityを計算した。
+- A1.1ではGTFS停留所範囲に絞ってOSM徒歩道路とhospital 7件をCI取得し、病院Accessibilityを実計算した。
 - GTFS Data Japan APIは基準日時点で愛媛・伊予鉄・松山の検索結果が0件だった。これは全提供元の不存在を意味しないため、未取得の外部入力として扱う。
 
 ## 未取得データの扱い
