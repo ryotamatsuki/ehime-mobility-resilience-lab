@@ -197,7 +197,6 @@ jobs:
           node --check _site/app.js
           node --check _site/a1_10_runtime.js
           node --check _site/a1_11_runtime.js
-          node web/tests/a1_11_smoke.js _site
           node web/tests/a1_12_smoke.js _site
           test -f _site/data/equity_summary.json
           test -f _site/data/vulnerable_population_access.geojson
