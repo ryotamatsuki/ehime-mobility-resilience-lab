@@ -1,9 +1,9 @@
-"""Minimal, deterministic walk + scheduled-transit accessibility helpers for A1.1.
+"""Deterministic walk + scheduled-transit accessibility helpers for A1.
 
-The module deliberately stays dependency-free. It is not a full journey planner:
-walking is routed on an OSM-derived pedestrian graph, scheduled bus movement is
-handled with a connection-scan pass, and stop-to-stop walking transfers are not
-yet included. Those limitations are surfaced in provenance instead of hidden.
+Walking is routed on an OSM-derived pedestrian graph and scheduled transit is
+handled with a connection-scan pass. A1.6 adds explicit stop-to-stop walking
+transfer edges while deliberately remaining dependency-free. It is still a
+minimal accessibility engine rather than a general-purpose journey planner.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def mesh100m_center(meshcode: str) -> tuple[float, float]:
 
     10-digit mesh codes subdivide the standard 1 km third mesh into ten parts
     north-south and east-west. Returned coordinates are suitable for the public
-    census-derived mesh used in A1.1; no claim of survey-grade precision is made.
+    census-derived mesh used in A1; no claim of survey-grade precision is made.
     """
 
     code = str(meshcode).strip()
@@ -187,6 +187,44 @@ def stop_walk_times(
     return result
 
 
+def stop_transfer_edges(
+    stop_walk: dict[str, dict[str, float]],
+    stop_nodes: dict[str, str],
+    *,
+    max_walk_minutes: float = 10.0,
+    transfer_buffer_minutes: float = 1.0,
+) -> dict[str, list[dict[str, float | str]]]:
+    """Build directed stop-to-stop walking transfers from network distances.
+
+    The walk threshold applies to the actual network walk only. A fixed transfer
+    buffer is added after the walk to represent wayfinding/boarding margin. The
+    returned graph contains direct pairwise transfers only; the routing kernel
+    does not recursively chain walking transfers, preventing a sequence of short
+    stop hops from bypassing the configured maximum transfer walk.
+    """
+    if max_walk_minutes < 0 or transfer_buffer_minutes < 0:
+        raise ValueError("transfer walk and buffer must be non-negative")
+    result: dict[str, list[dict[str, float | str]]] = {}
+    for from_stop, node_distances in sorted(stop_walk.items()):
+        edges: list[dict[str, float | str]] = []
+        for to_stop, to_node in sorted(stop_nodes.items()):
+            if to_stop == from_stop:
+                continue
+            walk_minutes = float(node_distances.get(to_node, math.inf))
+            if not math.isfinite(walk_minutes) or walk_minutes > max_walk_minutes:
+                continue
+            edges.append(
+                {
+                    "to_stop": str(to_stop),
+                    "walk_minutes": round(walk_minutes, 6),
+                    "transfer_minutes": round(walk_minutes + transfer_buffer_minutes, 6),
+                }
+            )
+        if edges:
+            result[str(from_stop)] = edges
+    return result
+
+
 def earliest_arrival_minutes(
     *,
     zone_node: str,
@@ -198,14 +236,27 @@ def earliest_arrival_minutes(
     stop_nodes: dict[str, str],
     disabled_routes: set[str] | None = None,
     max_access_walk_minutes: float = 20.0,
+    stop_transfers: dict[str, list[dict[str, float | str]]] | None = None,
 ) -> float:
     disabled_routes = disabled_routes or set()
+    stop_transfers = stop_transfers or {}
     direct = facility_walk_by_node.get(zone_node, math.inf)
     arrival: dict[str, int] = {}
     for stop_id, node_distances in stop_walk.items():
         walk_minutes = node_distances.get(zone_node, math.inf)
         if walk_minutes <= max_access_walk_minutes:
             arrival[stop_id] = departure_seconds + int(round(walk_minutes * 60.0))
+
+    def relax_one_transfer(from_stop: str, from_arrival_seconds: int) -> None:
+        # One transfer layer only. Transfer-derived arrivals are deliberately not
+        # recursively expanded into another walking transfer.
+        for edge in stop_transfers.get(from_stop, []):
+            to_stop = str(edge["to_stop"])
+            transfer_seconds = int(round(float(edge["transfer_minutes"]) * 60.0))
+            candidate = from_arrival_seconds + transfer_seconds
+            if candidate < arrival.get(to_stop, 10**12):
+                arrival[to_stop] = candidate
+
     for connection in sorted(connections, key=lambda item: (item["departure_seconds"], item["arrival_seconds"])):
         trip_id = str(connection["trip_id"])
         if trip_routes.get(trip_id) in disabled_routes:
@@ -216,6 +267,7 @@ def earliest_arrival_minutes(
             candidate = int(connection["arrival_seconds"])
             if candidate < arrival.get(to_stop, 10**12):
                 arrival[to_stop] = candidate
+                relax_one_transfer(to_stop, candidate)
     best = direct
     for stop_id, arrival_seconds in arrival.items():
         stop_node = stop_nodes.get(stop_id)
