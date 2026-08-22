@@ -62,7 +62,7 @@ if (fs.existsSync(generatedSummary)) {
   const population = JSON.parse(fs.readFileSync(path.join(dataDir, "population_access.geojson"), "utf8"));
   const stops = JSON.parse(fs.readFileSync(path.join(dataDir, "stops.geojson"), "utf8"));
   const facilities = JSON.parse(fs.readFileSync(path.join(dataDir, "facilities.geojson"), "utf8"));
-  if (!["A1.1", "A1.5"].includes(summary.stage) || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1 summary contract");
+  if (!["A1.1", "A1.5", "A1.6"].includes(summary.stage) || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1 summary contract");
   if (manifest.stage !== "A1.3" || manifest.status !== "computed") throw new Error("invalid A1.3 manifest contract");
   if (!Array.isArray(manifest.ui_capabilities) || !manifest.ui_capabilities.includes("three-pane-planning-canvas")) throw new Error("A1.3 UI capability contract missing");
   if (!manifest.ui_capabilities.includes("map-driven-scenario-selection")) throw new Error("map-driven scenario capability missing");
@@ -70,8 +70,9 @@ if (fs.existsSync(generatedSummary)) {
   if (facilities.features.length !== summary.osm.hospital_destinations) throw new Error("hospital count mismatch");
   if (population.features.length !== summary.population.zones_in_envelope) throw new Error("population zone count mismatch");
   if (!(summary.impact.population_with_gt_1min_increase > 0)) throw new Error("stress test has no measurable travel-time impact");
-  if (summary.stage === "A1.5") {
-    if (!summary.official_registry || !(summary.official_registry.verified_osm_hospitals > 0)) throw new Error("A1.5 official verification summary missing");
+
+  if (["A1.5", "A1.6"].includes(summary.stage)) {
+    if (!summary.official_registry || !(summary.official_registry.verified_osm_hospitals > 0)) throw new Error("official verification summary missing");
     if (summary.official_registry.official_records_without_osm_match !== 0) throw new Error("official hospital coverage is incomplete");
     if (summary.official_registry.raw_workbook_published !== false) throw new Error("raw official workbook publication is forbidden");
     for (const feature of facilities.features) {
@@ -81,10 +82,23 @@ if (fs.existsSync(generatedSummary)) {
         if (Object.prototype.hasOwnProperty.call(p, forbidden)) throw new Error("official raw attribute leaked: " + forbidden);
       }
     }
-    if (!manifest.ui_capabilities.includes("official-hospital-verification-gate")) throw new Error("A1.5 UI provenance capability missing");
-    if (!html.includes("病院照合：愛媛県公式台帳（A）")) throw new Error("A1.5 official verification label missing from generated UI");
-    if (!app.includes("愛媛県公式台帳照合済み（A）")) throw new Error("A1.5 hospital popup provenance label missing");
+    if (!manifest.ui_capabilities.includes("official-hospital-verification-gate")) throw new Error("official verification UI provenance capability missing");
+    if (!html.includes("病院照合：愛媛県公式台帳（A）")) throw new Error("official verification label missing from generated UI");
+    if (!app.includes("愛媛県公式台帳照合済み（A）")) throw new Error("hospital popup provenance label missing");
+  }
+
+  if (summary.stage === "A1.6") {
+    if (!summary.transfer_network || !(summary.transfer_network.directed_edges > 0)) throw new Error("A1.6 transfer network missing");
+    if (summary.transfer_network.recursive_walking_transfer_chaining !== false) throw new Error("recursive walking-transfer chaining unexpectedly enabled");
+    if (!summary.same_input_no_transfer || !summary.transfer_model_effect) throw new Error("A1.6 same-input model comparison missing");
+    if (!manifest.ui_capabilities.includes("stop-to-stop-walking-transfer")) throw new Error("A1.6 walking transfer capability missing");
+    if (!manifest.ui_capabilities.includes("same-input-no-transfer-model-comparison")) throw new Error("A1.6 model comparison capability missing");
+    if (!html.includes("徒歩乗換") || !html.includes("道路NW 10分以内 + 1分")) throw new Error("A1.6 transfer assumptions missing from generated UI");
+    for (const feature of population.features) {
+      const p = feature.properties || {};
+      if (!("baseline_no_transfer_minutes" in p) || !("disrupted_no_transfer_minutes" in p)) throw new Error("A1.6 no-transfer comparison fields missing");
+    }
   }
 }
 
-console.log("A1.5-compatible planning-canvas smoke test passed for " + target);
+console.log("A1.6-compatible planning-canvas smoke test passed for " + target);
