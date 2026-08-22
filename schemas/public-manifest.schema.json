@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Public Manifest",
+  "type": "object",
+  "required": ["schema_version", "product", "artifacts", "attribution"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "product": {"type": "object"},
+    "artifacts": {"type": "array"},
+    "attribution": {"type": "array", "items": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

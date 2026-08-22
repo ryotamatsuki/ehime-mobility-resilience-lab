@@ -255,3 +255,9 @@ The following primary sources were checked when selecting the foundation directi
 - [PMTiles browser documentation](https://pmtiles.io/typedoc/index.html)
 
 These sources establish capability and integration direction. They do not replace the A1 feasibility tests against the actual Ehime datasets, licence conditions, and measured artifact sizes.
+
+## 16. Existing preparatory artifacts retained at A0
+
+This repository also retains a small set of preparatory Python modules, deterministic fixtures, public summaries, and a static UI that had already been created before the stage-gate instruction. They are included for continuity and auditability, but they are frozen A0 assets: their presence does not mean that A1 has been released or that unverified Ehime-wide GTFS, detailed vehicle OD, traffic assignment, freight, or relief results are available.
+
+The current public road bundle is generated from a local, licence-audited major-road extract and is distributed as `web/data/network.geojson.gz` for Pages. The uncompressed file remains a local development fallback. Packaging changes transfer size only; it does not change the classification, coverage, or limitations of the underlying artifact.

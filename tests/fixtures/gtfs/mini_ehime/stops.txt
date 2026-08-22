@@ -1,0 +1,4 @@
+stop_id,stop_name,stop_lat,stop_lon
+s1,Start,33.84,132.76
+s2,Middle,33.85,132.77
+s3,End,33.86,132.78

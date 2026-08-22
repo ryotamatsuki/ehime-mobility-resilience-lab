@@ -1,0 +1,10 @@
+{
+  "name": "ehime-mobility-resilience-lab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Static public layer smoke checks for Ehime Mobility Resilience Lab",
+  "scripts": {
+    "test": "node web/tests/smoke.js",
+    "build": "node web/tests/smoke.js"
+  }
+}

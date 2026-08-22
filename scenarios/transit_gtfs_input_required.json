@@ -1,0 +1,17 @@
+{
+  "scenario_id": "transit-gtfs-input-required",
+  "title": "公共交通途絶チェック",
+  "description": "GTFSのサービス日・便・停留所を入力してから計算する。未取得 feed はゼロ便と解釈しない。",
+  "classification": "D",
+  "network_version": "pending",
+  "gtfs_version": null,
+  "od_model_version": "pending",
+  "disabled_links": [],
+  "capacity_reductions": {},
+  "parameters": {
+    "required_input": "licensed GTFS static feed",
+    "transit_centered": true
+  },
+  "result_version": null,
+  "created_at": "2026-08-22T00:00:00+09:00"
+}

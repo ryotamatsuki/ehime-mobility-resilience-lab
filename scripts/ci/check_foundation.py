@@ -41,8 +41,8 @@ def main() -> None:
             fail(f"architecture marker not found: {marker}")
     if "docs/ARCHITECTURE.md" not in readme:
         fail("README does not link to docs/ARCHITECTURE.md")
-    if "<title>" not in index or "A0" not in index:
-        fail("static Pages placeholder is missing title or A0 marker")
+    if "<title>" not in index or "Ehime Mobility Resilience Lab" not in index:
+        fail("static Pages document is missing the product title")
 
     prohibited_fragments = (
         "new-earthquake",

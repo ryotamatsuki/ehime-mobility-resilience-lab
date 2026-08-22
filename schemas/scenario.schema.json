@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stress Test Scenario",
+  "type": "object",
+  "required": ["scenario_id", "title", "classification", "disabled_links", "parameters"],
+  "properties": {
+    "scenario_id": {"type": "string"},
+    "title": {"type": "string"},
+    "description": {"type": "string"},
+    "classification": {"const": "D"},
+    "network_version": {"type": "string"},
+    "gtfs_version": {"type": ["string", "null"]},
+    "od_model_version": {"type": "string"},
+    "disabled_links": {"type": "array", "items": {"type": "string"}},
+    "capacity_reductions": {"type": "object"},
+    "parameters": {"type": "object"},
+    "result_version": {"type": ["string", "null"]},
+    "created_at": {"type": "string"}
+  },
+  "additionalProperties": true
+}
