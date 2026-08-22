@@ -1,9 +1,9 @@
-"""Build the A1.2 static WebGIS from the verified A1.1 real-data outputs.
+"""Build the A1.3 planning-canvas WebGIS from verified A1.1 real-data outputs.
 
-The source web directory contains only application code and legacy A0 fixtures.
-This builder creates a clean deployable site and replaces the public data folder
-with the current A1.1 derived outputs. Raw third-party input archives are never
-copied into the site.
+The source web directory contains application code and legacy fixtures. This
+builder creates a clean deployable site and replaces the public data folder with
+current A1.1 derived outputs. Raw third-party input archives are never copied to
+the public site.
 """
 
 from __future__ import annotations
@@ -75,9 +75,9 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         shutil.copy2(source / name, data_dir / name)
 
     manifest = {
-        "stage": "A1.2",
+        "stage": "A1.3",
         "status": "computed",
-        "title": "大洲市 ぐるりんおおず 病院Accessibility WebGIS",
+        "title": "Ehime Mobility Resilience Lab — Planning Canvas",
         "result_stage": summary["stage"],
         "analysis_date": summary["analysis_date"],
         "departure_time": summary["departure_time"],
@@ -88,6 +88,15 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "model_version": summary.get("provenance", {}).get("model_version"),
         "scenario_id": summary.get("scenario", {}).get("id"),
         "artifacts": list(REQUIRED_RESULTS),
+        "ui_capabilities": [
+            "three-pane-planning-canvas",
+            "baseline-vs-disruption",
+            "map-driven-scenario-selection",
+            "mesh-before-after",
+            "weighted-travel-time-distribution",
+            "single-validated-recovery-action",
+            "provenance-and-limitations",
+        ],
         "public_limitations": summary.get("provenance", {}).get("limitations", []),
     }
     (data_dir / "manifest.json").write_text(
@@ -101,6 +110,8 @@ def build(source: Path, web: Path, destination: Path) -> dict:
         "A1_1_QA_REPORT.md",
         "A1_2_WEBGIS_DEMO.md",
         "A1_2_QA_REPORT.md",
+        "A1_3_IDEAL_UI.md",
+        "A1_3_QA_REPORT.md",
         "DATA_LICENSES.md",
     ):
         src = ROOT / "docs" / name
@@ -108,7 +119,7 @@ def build(source: Path, web: Path, destination: Path) -> dict:
             shutil.copy2(src, docs_out / name)
 
     print(json.dumps({
-        "stage": "A1.2",
+        "stage": "A1.3",
         "destination": str(destination),
         "gtfs_stops": summary["gtfs"]["stops"],
         "population_zones": summary["population"]["zones_in_envelope"],
