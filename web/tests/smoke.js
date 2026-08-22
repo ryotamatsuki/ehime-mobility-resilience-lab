@@ -21,8 +21,7 @@ const requiredMarkers = [
   "RECOVERY",
   "distribution-chart",
   "population_access.geojson",
-  "weightedCdf",
-  "map-driven-scenario-selection"
+  "weightedCdf"
 ];
 for (const marker of requiredMarkers) {
   if (!html.includes(marker) && !app.includes(marker)) throw new Error("missing A1.3 planning-canvas marker: " + marker);
@@ -51,6 +50,7 @@ if (fs.existsSync(generatedSummary)) {
   if (summary.stage !== "A1.1" || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1.1 summary contract");
   if (manifest.stage !== "A1.3" || manifest.status !== "computed") throw new Error("invalid A1.3 manifest contract");
   if (!Array.isArray(manifest.ui_capabilities) || !manifest.ui_capabilities.includes("three-pane-planning-canvas")) throw new Error("A1.3 UI capability contract missing");
+  if (!manifest.ui_capabilities.includes("map-driven-scenario-selection")) throw new Error("map-driven scenario capability missing");
   if (stops.features.length !== summary.gtfs.stops) throw new Error("GTFS stop count mismatch");
   if (facilities.features.length !== summary.osm.hospital_destinations) throw new Error("hospital count mismatch");
   if (population.features.length !== summary.population.zones_in_envelope) throw new Error("population zone count mismatch");
