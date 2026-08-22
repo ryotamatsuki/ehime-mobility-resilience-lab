@@ -50,6 +50,39 @@ jobs:
       - name: Probe selected real A1.1 sources
         run: python scripts/ingest/probe_a1_sources.py
 
+  a1_real_accessibility:
+    if: github.ref == 'refs/heads/feature/a1-1-minimal-accessibility' || github.event_name == 'pull_request'
+    needs: [a1_source_probe, python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Build A1.1 real-data accessibility result
+        run: PYTHONPATH=src python scripts/build_network/build_a1_1.py --output outputs/a1_1
+      - name: Validate A1.1 result contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path('outputs/a1_1/summary.json').read_text())
+          assert result['stage'] == 'A1.1'
+          assert result['status'] == 'computed'
+          assert result['classification'] == 'C'
+          assert result['scenario_classification'] == 'D'
+          assert result['gtfs']['snapped_stops'] >= 1
+          assert result['osm']['essential_facilities'] >= 1
+          assert result['population']['zones_in_envelope'] >= 1
+          assert result['baseline']['reachable_60min'] >= result['disrupted']['reachable_60min']
+          print(json.dumps(result['impact'], ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a1-1-real-accessibility
+          path: outputs/a1_1
+          if-no-files-found: error
+
   web:
     runs-on: ubuntu-latest
     steps:
