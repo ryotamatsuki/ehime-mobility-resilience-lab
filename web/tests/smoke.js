@@ -35,7 +35,7 @@ if (fs.existsSync(generatedSummary)) {
   const population = JSON.parse(fs.readFileSync(path.join(dataDir, "population_access.geojson"), "utf8"));
   const stops = JSON.parse(fs.readFileSync(path.join(dataDir, "stops.geojson"), "utf8"));
   const facilities = JSON.parse(fs.readFileSync(path.join(dataDir, "facilities.geojson"), "utf8"));
-  if (!["A1.1","A1.5","A1.6","A1.7","A1.8"].includes(summary.stage) || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1 summary contract");
+  if (!["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9"].includes(summary.stage) || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1 summary contract");
   if (manifest.stage !== "A1.3" || manifest.status !== "computed") throw new Error("invalid A1.3 manifest contract");
   if (!manifest.ui_capabilities.includes("three-pane-planning-canvas") || !manifest.ui_capabilities.includes("map-driven-scenario-selection")) throw new Error("core Planning Canvas capability missing");
   if (stops.features.length !== summary.gtfs.stops) throw new Error("GTFS stop count mismatch");
@@ -43,7 +43,7 @@ if (fs.existsSync(generatedSummary)) {
   if (population.features.length !== summary.population.zones_in_envelope) throw new Error("population zone count mismatch");
   if (!(summary.impact.population_with_gt_1min_increase > 0)) throw new Error("reference stress test has no measurable impact");
 
-  if (["A1.5","A1.6","A1.7","A1.8"].includes(summary.stage)) {
+  if (["A1.5","A1.6","A1.7","A1.8","A1.9"].includes(summary.stage)) {
     if (!summary.official_registry || !(summary.official_registry.verified_osm_hospitals > 0)) throw new Error("official verification summary missing");
     if (summary.official_registry.official_records_without_osm_match !== 0 || summary.official_registry.raw_workbook_published !== false) throw new Error("official hospital gate invalid");
     for (const feature of facilities.features) {
@@ -55,7 +55,7 @@ if (fs.existsSync(generatedSummary)) {
     if (!html.includes("病院照合：愛媛県公式台帳（A）") || !app.includes("愛媛県公式台帳照合済み（A）")) throw new Error("official provenance label missing");
   }
 
-  if (["A1.6","A1.7","A1.8"].includes(summary.stage)) {
+  if (["A1.6","A1.7","A1.8","A1.9"].includes(summary.stage)) {
     if (!summary.transfer_network || !(summary.transfer_network.directed_edges > 0)) throw new Error("walking transfer network missing");
     if (!manifest.ui_capabilities.includes("stop-to-stop-walking-transfer")) throw new Error("walking transfer capability missing");
     if (!html.includes("徒歩乗換") || !html.includes("道路NW 10分以内 + 1分")) throw new Error("transfer assumptions missing");
@@ -67,7 +67,7 @@ if (fs.existsSync(generatedSummary)) {
     if (!manifest.ui_capabilities.includes("same-input-no-transfer-model-comparison")) throw new Error("A1.6 comparison capability missing");
   }
 
-  if (["A1.7","A1.8"].includes(summary.stage)) {
+  if (["A1.7","A1.8","A1.9"].includes(summary.stage)) {
     const temporalPath = path.join(dataDir, "temporal_profile.json");
     if (!fs.existsSync(temporalPath)) throw new Error("temporal profile missing");
     const temporal = JSON.parse(fs.readFileSync(temporalPath, "utf8"));
@@ -76,7 +76,7 @@ if (fs.existsSync(generatedSummary)) {
     if (!html.includes("TEMPORAL RESILIENCE") || !html.includes("終日の時間帯レジリエンス")) throw new Error("temporal UI missing");
   }
 
-  if (summary.stage === "A1.8") {
+  if (["A1.8","A1.9"].includes(summary.stage)) {
     const criticalityPath = path.join(dataDir, "criticality.json");
     if (!fs.existsSync(criticalityPath)) throw new Error("criticality.json missing");
     const criticality = JSON.parse(fs.readFileSync(criticalityPath, "utf8"));
@@ -84,5 +84,23 @@ if (fs.existsSync(generatedSummary)) {
     if (!manifest.ui_capabilities.includes("route-criticality-ranking") || !manifest.ui_capabilities.includes("trip-criticality-ranking")) throw new Error("criticality capabilities missing");
     if (!html.includes("SERVICE CRITICALITY") || !html.includes("路線 Top 3") || !html.includes("便 Top 3")) throw new Error("criticality UI missing");
   }
+
+  if (summary.stage === "A1.9") {
+    for (const name of ["shelters.geojson","shelter_accessibility.json","shelter_population_access.geojson"]) {
+      if (!fs.existsSync(path.join(dataDir, name))) throw new Error("A1.9 shelter artifact missing: " + name);
+    }
+    const shelters = JSON.parse(fs.readFileSync(path.join(dataDir, "shelters.geojson"), "utf8"));
+    const shelterMesh = JSON.parse(fs.readFileSync(path.join(dataDir, "shelter_population_access.geojson"), "utf8"));
+    if (!summary.shelter_registry || summary.shelter_registry.license !== "CC BY 4.0" || summary.shelter_registry.raw_workbook_published !== false) throw new Error("A1.9 shelter registry contract invalid");
+    if (!Array.isArray(shelters.features) || !shelters.features.length) throw new Error("A1.9 public shelters empty");
+    if (!Array.isArray(shelterMesh.features) || shelterMesh.features.length !== summary.population.zones_in_envelope) throw new Error("A1.9 shelter mesh contract invalid");
+    for (const kind of ["emergency","general","welfare"]) {
+      if (!(summary.shelter_accessibility[kind].usable_destinations > 0)) throw new Error("A1.9 no usable " + kind + " destinations");
+    }
+    for (const capability of ["official-shelter-registry","shelter-location-verification-gate","emergency-shelter-accessibility","general-shelter-accessibility","welfare-shelter-accessibility"]) {
+      if (!manifest.ui_capabilities.includes(capability)) throw new Error("A1.9 shelter capability missing: " + capability);
+    }
+    if (!html.includes("SHELTER ACCESSIBILITY") || !html.includes("避難所・福祉避難所への到達性")) throw new Error("A1.9 shelter UI missing");
+  }
 }
-console.log("A1.8-compatible planning-canvas smoke test passed for " + target);
+console.log("A1.9-compatible planning-canvas smoke test passed for " + target);
