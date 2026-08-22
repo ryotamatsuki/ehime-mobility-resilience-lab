@@ -1,37 +1,39 @@
 const fs = require("fs");
 const path = require("path");
 
-const root = path.resolve(__dirname, "..", "..");
-const required = [
-  "web/index.html",
-  "web/app.js",
-  "web/styles.css",
-  "web/data/manifest.json",
-  "web/data/population_zones.geojson",
-  "web/data/metrics.json"
-];
+const repoRoot = path.resolve(__dirname, "..", "..");
+const target = process.argv[2] ? path.resolve(repoRoot, process.argv[2]) : path.join(repoRoot, "web");
 
-for (const file of required) {
-  if (!fs.existsSync(path.join(root, file))) {
-    throw new Error("missing frontend artifact: " + file);
+for (const name of ["index.html", "app.js", "styles.css"]) {
+  if (!fs.existsSync(path.join(target, name))) throw new Error("missing frontend artifact: " + path.join(target, name));
+}
+
+const html = fs.readFileSync(path.join(target, "index.html"), "utf8");
+const app = fs.readFileSync(path.join(target, "app.js"), "utf8");
+for (const marker of ["右回り停止", "病院Accessibility", "Provenance", "population_access.geojson", "scenario-button"]) {
+  if (!html.includes(marker) && !app.includes(marker)) throw new Error("missing A1.2 marker: " + marker);
+}
+for (const stale of ["road56-stress-test", "国道56号区間停止チェック", "GTFS入力待ち"]) {
+  if (html.includes(stale) || app.includes(stale)) throw new Error("stale A0 UI remains: " + stale);
+}
+
+const dataDir = path.join(target, "data");
+if (fs.existsSync(dataDir)) {
+  const required = ["summary.json", "manifest.json", "routes.geojson", "stops.geojson", "facilities.geojson", "population_access.geojson"];
+  for (const name of required) {
+    if (!fs.existsSync(path.join(dataDir, name))) throw new Error("missing generated A1.2 data: " + name);
   }
-}
-const networkCandidates = ["web/data/network.geojson", "web/data/network.geojson.gz"];
-if (!networkCandidates.some((file) => fs.existsSync(path.join(root, file)))) {
-  throw new Error("missing frontend artifact: network.geojson or network.geojson.gz");
-}
-
-const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
-const app = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
-for (const marker of ["Scenario Builder", "PEOPLE", "TRANSIT", "TRAFFIC", "LOGISTICS", "RELIEF", "provenance"]) {
-  if (!html.includes(marker) && !app.includes(marker)) {
-    throw new Error("missing frontend marker: " + marker);
-  }
-}
-
-const metrics = JSON.parse(fs.readFileSync(path.join(root, "web/data/metrics.json"), "utf8"));
-if (metrics.classification !== "D" || !metrics.provenance || metrics.transit.status !== "external_input_required") {
-  throw new Error("public metrics contract is missing classification, provenance, or GTFS state");
+  const summary = JSON.parse(fs.readFileSync(path.join(dataDir, "summary.json"), "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(path.join(dataDir, "manifest.json"), "utf8"));
+  const population = JSON.parse(fs.readFileSync(path.join(dataDir, "population_access.geojson"), "utf8"));
+  const stops = JSON.parse(fs.readFileSync(path.join(dataDir, "stops.geojson"), "utf8"));
+  const facilities = JSON.parse(fs.readFileSync(path.join(dataDir, "facilities.geojson"), "utf8"));
+  if (summary.stage !== "A1.1" || summary.status !== "computed" || summary.classification !== "C") throw new Error("invalid A1.1 summary contract");
+  if (manifest.stage !== "A1.2" || manifest.status !== "computed") throw new Error("invalid A1.2 manifest contract");
+  if (stops.features.length !== summary.gtfs.stops) throw new Error("GTFS stop count mismatch");
+  if (facilities.features.length !== summary.osm.hospital_destinations) throw new Error("hospital count mismatch");
+  if (population.features.length !== summary.population.zones_in_envelope) throw new Error("population zone count mismatch");
+  if (!(summary.impact.population_with_gt_1min_increase > 0)) throw new Error("stress test has no measurable travel-time impact");
 }
 
-console.log("frontend smoke test passed");
+console.log("A1.2 frontend smoke test passed for " + target);
