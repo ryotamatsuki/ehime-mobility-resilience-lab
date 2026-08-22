@@ -113,20 +113,20 @@ def apply_result_specific_labels(destination: Path, summary: dict) -> None:
     if stage == "A1.7":
         temporal = summary["temporal_resilience"]
         card = (
-            '<section class="analytics-card temporal-card">'
-            '<div class="analytics-heading"><div><p class="pane-kicker">TEMPORAL RESILIENCE</p>'
-            '<h2>終日の時間帯レジリエンス</h2></div><span class="data-chip">06:00–21:00 / 1時間</span></div>'
+            '<article class="analytics-card temporal-card">'
+            '<div class="card-heading"><div><p class="pane-kicker">TEMPORAL RESILIENCE</p>'
+            '<h2>終日の時間帯レジリエンス</h2></div><span class="classification classification-c">06:00–21:00 / 1時間</span></div>'
             '<div class="severity-grid">'
             f'<div><span>影響最大</span><strong>{temporal["worst_affected_time"]}</strong><small>{temporal["worst_affected_population"]:,.0f}人相当</small></div>'
             f'<div><span>平均悪化最大</span><strong>{temporal["worst_mean_degradation_time"]}</strong><small>+{temporal["worst_mean_degradation_minutes"]:.3f}分</small></div>'
             f'<div><span>影響最小</span><strong>{temporal["lowest_affected_time"]}</strong><small>{temporal["lowest_affected_population"]:,.0f}人相当</small></div>'
-            '</div><p class="builder-note">全16時点の詳細値は temporal_profile.json に保存。地図は比較継続性のため08:00断面を表示しています。</p>'
-            '</section>'
+            '</div><p class="chart-note">全16時点の詳細値は temporal_profile.json に保存。地図は比較継続性のため08:00断面です。</p>'
+            '</article>'
         )
-        html = html.replace(
-            '<section class="analytics-card recovery-card">',
-            card + '<section class="analytics-card recovery-card">',
-        )
+        marker = '<article class="analytics-card recovery-card">'
+        if marker not in html:
+            raise ValueError("recovery card marker not found for A1.7 temporal UI injection")
+        html = html.replace(marker, card + marker, 1)
     index.write_text(html, encoding="utf-8")
 
     app_path = destination / "app.js"
