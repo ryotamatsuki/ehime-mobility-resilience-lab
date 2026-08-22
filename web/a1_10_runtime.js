@@ -1,5 +1,5 @@
 /* A1.10 generated-site UI enhancer.
-   CSS/runtime contract: destination-synchronized-metrics and destination-synchronized-charts.
+   CSS/runtime contract: data-ui-stage, destination-synchronized-metrics and destination-synchronized-charts.
    No routing or accessibility values are computed here. */
 (function () {
   "use strict";
