@@ -32,8 +32,8 @@ def gravity_seed(
     _check_targets(origins, destinations, origin_targets, destination_targets)
     structural_zeros = structural_zeros or set()
     seed: dict[tuple[str, str], float] = {}
-    for i, origin in enumerate(origins):
-        for j, destination in enumerate(destinations):
+    for origin in origins:
+        for destination in destinations:
             if (origin, destination) in structural_zeros:
                 seed[(origin, destination)] = 0.0
                 continue
@@ -59,14 +59,14 @@ def ipf(
         for origin in origins
         for destination in destinations
     }
-    for origin, target in zip(origins, origin_targets):
+    for origin, target in zip(origins, origin_targets, strict=True):
         if target > 0 and sum(values[(origin, destination)] for destination in destinations) == 0:
             raise InfeasibleConstraints(f"origin {origin} has no feasible destination")
-    for destination, target in zip(destinations, destination_targets):
+    for destination, target in zip(destinations, destination_targets, strict=True):
         if target > 0 and sum(values[(origin, destination)] for origin in origins) == 0:
             raise InfeasibleConstraints(f"destination {destination} has no feasible origin")
     for _ in range(max_iterations):
-        for origin, target in zip(origins, origin_targets):
+        for origin, target in zip(origins, origin_targets, strict=True):
             total = sum(values[(origin, destination)] for destination in destinations)
             if total == 0 and target == 0:
                 continue
@@ -75,7 +75,7 @@ def ipf(
             factor = target / total
             for destination in destinations:
                 values[(origin, destination)] *= factor
-        for destination, target in zip(destinations, destination_targets):
+        for destination, target in zip(destinations, destination_targets, strict=True):
             total = sum(values[(origin, destination)] for origin in origins)
             if total == 0 and target == 0:
                 continue
@@ -87,11 +87,11 @@ def ipf(
         error = max(
             [
                 abs(sum(values[(origin, destination)] for destination in destinations) - target)
-                for origin, target in zip(origins, origin_targets)
+                for origin, target in zip(origins, origin_targets, strict=True)
             ]
             + [
                 abs(sum(values[(origin, destination)] for origin in origins) - target)
-                for destination, target in zip(destinations, destination_targets)
+                for destination, target in zip(destinations, destination_targets, strict=True)
             ]
         )
         if error <= tolerance:
@@ -120,7 +120,7 @@ def constrained_ipf(
     if abs(sum(group_pair_targets.values()) - sum(origin_targets)) > tolerance:
         raise InfeasibleConstraints("group-pair total differs from OD total")
     for _ in range(max_iterations):
-        for origin, target in zip(origins, origin_targets):
+        for origin, target in zip(origins, origin_targets, strict=True):
             total = sum(values[(origin, destination)] for destination in destinations)
             if total == 0 and target == 0:
                 continue
@@ -129,7 +129,7 @@ def constrained_ipf(
             factor = target / total
             for destination in destinations:
                 values[(origin, destination)] *= factor
-        for destination, target in zip(destinations, destination_targets):
+        for destination, target in zip(destinations, destination_targets, strict=True):
             total = sum(values[(origin, destination)] for origin in origins)
             if total == 0 and target == 0:
                 continue
@@ -156,11 +156,11 @@ def constrained_ipf(
                 values[cell] *= factor
         errors = [
             abs(sum(values[(origin, destination)] for destination in destinations) - target)
-            for origin, target in zip(origins, origin_targets)
+            for origin, target in zip(origins, origin_targets, strict=True)
         ]
         errors += [
             abs(sum(values[(origin, destination)] for origin in origins) - target)
-            for destination, target in zip(destinations, destination_targets)
+            for destination, target in zip(destinations, destination_targets, strict=True)
         ]
         errors += [
             abs(

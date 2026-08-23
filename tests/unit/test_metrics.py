@@ -11,6 +11,12 @@ class MetricTests(unittest.TestCase):
         self.assertEqual(screenline({"a": 110, "b": 60}, {"a": 100, "b": 50}, ["a", "b"])["model"], 170)
         self.assertEqual(vkt({"a": 110, "b": 60}, {"a": 1, "b": 2}), 230)
 
+    def test_validation_series_length_mismatch_is_rejected(self):
+        with self.assertRaises(ValueError):
+            rmse([1, 2], [1])
+        with self.assertRaises(ValueError):
+            mape([1], [1, 2])
+
     def test_holdout_is_deterministic_and_disjoint(self):
         first = holdout_split(["b", "a", "c", "d"])
         second = holdout_split(["d", "c", "a", "b"])

@@ -65,7 +65,7 @@ def walking_graph_from_overpass(data: dict[str, Any]) -> tuple[DirectedGraph, di
         if str(tags.get("foot", "")).lower() == "no":
             continue
         geometry = element.get("geometry") or []
-        for index, (first, second) in enumerate(zip(geometry, geometry[1:])):
+        for index, (first, second) in enumerate(zip(geometry, geometry[1:], strict=False)):
             a = (float(first["lat"]), float(first["lon"]))
             b = (float(second["lat"]), float(second["lon"]))
             u = _node_key(*a)

@@ -26,8 +26,8 @@ if (fs.existsSync(tdPath)) {
   const manifest = JSON.parse(fs.readFileSync(path.join(dataDir, "manifest.json"), "utf8"));
   const td = JSON.parse(fs.readFileSync(tdPath, "utf8"));
   const reference = JSON.parse(fs.readFileSync(path.join(dataDir, "criticality.json"), "utf8"));
-  if (summary.stage !== "A1.11" || td.stage !== "A1.11") throw new Error("A1.11 stage contract invalid");
-  if (manifest.result_stage !== "A1.11" || manifest.ui_release_stage !== "A1.11") throw new Error("A1.11 manifest contract invalid");
+  if (!["A1.11", "A1.12"].includes(summary.stage) || td.stage !== "A1.11") throw new Error("A1.11 capability stage contract invalid");
+  if (manifest.result_stage !== summary.stage || manifest.ui_release_stage !== "A1.11") throw new Error("A1.11 manifest contract invalid");
   if (!Array.isArray(td.rows) || td.rows.length !== 16) throw new Error("A1.11 must have 16 hourly rows");
   const times = td.rows.map(r => r.departure_time);
   if (times[0] !== "06:00" || times[times.length - 1] !== "21:00") throw new Error("A1.11 time window invalid");
@@ -56,6 +56,6 @@ if (fs.existsSync(tdPath)) {
     if (!manifest.ui_capabilities.includes(capability)) throw new Error("A1.11 capability missing: " + capability);
   }
   if (!html.includes('data-ui-stage="A1.11"') || !html.includes("TIME × SERVICE CRITICALITY")) throw new Error("A1.11 generated UI marker missing");
-  if (!app.includes('"A1.11"')) throw new Error("Planning Canvas app does not accept A1.11 result stage");
+  if (!app.includes("state.summary.stage !== state.manifest.result_stage")) throw new Error("Planning Canvas does not use manifest-driven result-stage validation");
 }
 console.log("A1.11 time-dependent criticality smoke passed for " + target);

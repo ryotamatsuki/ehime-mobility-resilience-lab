@@ -16,7 +16,7 @@ def geh(model: float, observed: float) -> float:
 def mape(model: Iterable[float], observed: Iterable[float], minimum_observed: float = 0.0) -> float:
     pairs = [
         (float(m), float(o))
-        for m, o in zip(model, observed)
+        for m, o in zip(model, observed, strict=True)
         if abs(float(o)) > minimum_observed
     ]
     if not pairs:
@@ -25,14 +25,14 @@ def mape(model: Iterable[float], observed: Iterable[float], minimum_observed: fl
 
 
 def rmse(model: Iterable[float], observed: Iterable[float]) -> float:
-    pairs = [(float(m), float(o)) for m, o in zip(model, observed)]
+    pairs = [(float(m), float(o)) for m, o in zip(model, observed, strict=True)]
     if not pairs:
         return float("nan")
     return math.sqrt(sum((m - o) ** 2 for m, o in pairs) / len(pairs))
 
 
 def wape(model: Iterable[float], observed: Iterable[float]) -> float:
-    pairs = [(float(m), float(o)) for m, o in zip(model, observed)]
+    pairs = [(float(m), float(o)) for m, o in zip(model, observed, strict=True)]
     denominator = sum(abs(o) for _, o in pairs)
     if denominator == 0:
         return float("nan")
@@ -81,7 +81,7 @@ def validation_summary(
     return {
         "link_count": len(common),
         "geh_lt_5_share": (
-            sum(geh(m, o) < 5 for m, o in zip(model_values, observed_values)) / len(common) * 100
+            sum(geh(m, o) < 5 for m, o in zip(model_values, observed_values, strict=True)) / len(common) * 100
             if common
             else float("nan")
         ),

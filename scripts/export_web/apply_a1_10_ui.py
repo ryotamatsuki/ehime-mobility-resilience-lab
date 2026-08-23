@@ -1,18 +1,31 @@
-"""Apply the A1.10 destination-switcher UI to a generated A1.9 site.
+"""Apply the A1.10 destination-switcher capability to a compatible generated site.
 
-This postprocessor intentionally runs after the A1.9 generated-site regression
-smoke test. It does not change routing outputs or accessibility values; it only
-adds UI assets, metadata and documentation that expose already-computed A1.9
-hospital/shelter destinations consistently.
+The UI layer depends on shelter/hospital accessibility artifacts, not on a
+specific successor stage number. Result-stage identity is preserved in the
+manifest so later A1 layers can compose without rewriting analysis metadata.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import shutil
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from scripts.export_web.site_contract import (
+    copy_docs,
+    copy_web_assets,
+    ensure_script,
+    ensure_stylesheet,
+    merge_manifest_capabilities,
+    read_json,
+    require_paths,
+    set_ui_stage,
+)
+
+SUPPORTED_RESULT_STAGES = {"A1.9", "A1.11", "A1.12"}
 A110_CAPABILITIES = [
     "destination-switcher",
     "shelter-map-layer",
@@ -22,75 +35,58 @@ A110_CAPABILITIES = [
 ]
 
 
-def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def apply(site: Path) -> dict:
     data = site / "data"
-    required = [
-        site / "index.html",
-        site / "app.js",
-        data / "summary.json",
-        data / "manifest.json",
-        data / "shelters.geojson",
-        data / "shelter_accessibility.json",
-        data / "shelter_population_access.geojson",
-    ]
-    missing = [str(path) for path in required if not path.exists()]
-    if missing:
-        raise FileNotFoundError("A1.10 requires a complete generated A1.9 site: " + ", ".join(missing))
+    require_paths(
+        "A1.10",
+        [
+            site / "index.html",
+            site / "app.js",
+            data / "summary.json",
+            data / "manifest.json",
+            data / "shelters.geojson",
+            data / "shelter_accessibility.json",
+            data / "shelter_population_access.geojson",
+        ],
+    )
 
     summary = read_json(data / "summary.json")
-    if summary.get("stage") != "A1.9" or summary.get("status") != "computed":
-        raise ValueError("A1.10 must be applied to a computed A1.9 result")
+    result_stage = summary.get("stage")
+    if result_stage not in SUPPORTED_RESULT_STAGES or summary.get("status") != "computed":
+        raise ValueError("A1.10 requires a computed shelter-capable A1 result")
     shelter_access = summary.get("shelter_accessibility") or {}
     for kind in ("emergency", "general", "welfare"):
         if shelter_access.get(kind, {}).get("usable_destinations", 0) < 1:
             raise ValueError(f"A1.10 has no usable {kind} destination")
 
-    for asset in ("a1_10.css", "a1_10_runtime.js"):
-        src = ROOT / "web" / asset
-        if not src.exists():
-            raise FileNotFoundError(f"missing A1.10 UI asset: {src}")
-        shutil.copy2(src, site / asset)
+    manifest_path = data / "manifest.json"
+    manifest = read_json(manifest_path)
+    if manifest.get("result_stage") != result_stage:
+        raise ValueError("A1.10 summary/manifest result-stage mismatch")
 
+    copy_web_assets(site, ("a1_10.css", "a1_10_runtime.js"))
     index_path = site / "index.html"
     html = index_path.read_text(encoding="utf-8")
-    if 'href="a1_10.css"' not in html:
-        html = html.replace('</head>', '  <link rel="stylesheet" href="a1_10.css">\n</head>', 1)
-    if 'src="a1_10_runtime.js"' not in html:
-        html = html.replace('</body>', '  <script src="a1_10_runtime.js"></script>\n</body>', 1)
-    if '<body data-ui-stage="A1.10"' not in html:
-        html = html.replace('<body>', '<body data-ui-stage="A1.10" data-destination="hospital">', 1)
+    html = ensure_stylesheet(html, "a1_10.css")
+    html = ensure_script(html, "a1_10_runtime.js")
+    html = set_ui_stage(html, "A1.10", destination="hospital")
     html = html.replace(
-        '実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較する交通レジリエンス・プランニングキャンバス',
-        '実GTFS・OSM・人口・公式避難所データで公共交通停止時の病院・避難所Accessibilityを比較する交通レジリエンス・プランニングキャンバス',
+        "実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較する交通レジリエンス・プランニングキャンバス",
+        "実GTFS・OSM・人口・公式避難所データで公共交通停止時の病院・避難所Accessibilityを比較する交通レジリエンス・プランニングキャンバス",
     )
     index_path.write_text(html, encoding="utf-8")
 
-    manifest_path = data / "manifest.json"
-    manifest = read_json(manifest_path)
-    if manifest.get("result_stage") != "A1.9":
-        raise ValueError("A1.10 manifest result_stage must remain A1.9")
-    manifest["ui_release_stage"] = "A1.10"
-    capabilities = list(manifest.get("ui_capabilities") or [])
-    for capability in A110_CAPABILITIES:
-        if capability not in capabilities:
-            capabilities.append(capability)
-    manifest["ui_capabilities"] = capabilities
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    docs_out = site / "docs"
-    docs_out.mkdir(exist_ok=True)
-    for name in ("A1_10_DESTINATION_SWITCHER.md", "A1_10_QA_REPORT.md"):
-        src = ROOT / "docs" / name
-        if src.exists():
-            shutil.copy2(src, docs_out / name)
+    merge_manifest_capabilities(
+        manifest_path,
+        result_stage=result_stage,
+        ui_release_stage="A1.10",
+        capabilities=A110_CAPABILITIES,
+    )
+    copy_docs(site, ("A1_10_DESTINATION_SWITCHER.md", "A1_10_QA_REPORT.md"))
 
     result = {
         "ui_release_stage": "A1.10",
-        "result_stage": "A1.9",
+        "result_stage": result_stage,
         "destinations": {
             "hospital": summary.get("osm", {}).get("hospital_destinations", 0),
             "emergency": shelter_access["emergency"]["usable_destinations"],

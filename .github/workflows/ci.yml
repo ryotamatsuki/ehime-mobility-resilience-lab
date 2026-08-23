@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-12-vulnerable-population-equity]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -25,10 +25,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install test runner
-        run: python -m pip install pytest
+      - name: Install test and static-analysis tools
+        run: python -m pip install pytest ruff
       - name: Run tests
         run: PYTHONPATH=src python -m pytest -q
+      - name: Run high-signal Ruff checks
+        run: ruff check --select F,B src scripts admin tests
       - name: Run A0 foundation checks
         run: python scripts/ci/check_foundation.py
       - name: Validate public data contract
@@ -169,25 +171,26 @@ jobs:
               'welfare': equity['destinations']['welfare'],
           }, ensure_ascii=False, indent=2))
           PY
-      - name: Regression smoke A1.11 predecessor site
+      - name: Golden regression against pre-hardening A1.12 main
+        run: python scripts/validate/check_a1_12_golden.py --output outputs/a1_12
+      - name: Regression smoke A1.11 capability without stage spoofing
         run: |
-          rm -rf /tmp/a1_11_compat _site
-          cp -R outputs/a1_12 /tmp/a1_11_compat
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p = Path('/tmp/a1_11_compat/summary.json')
-          s = json.loads(p.read_text())
-          s['stage'] = 'A1.11'
-          s['title'] = '大洲市 A1.11 predecessor regression view'
-          p.write_text(json.dumps(s, ensure_ascii=False, indent=2))
-          PY
-          python scripts/export_web/build_a1_11_site.py --source /tmp/a1_11_compat --destination _site
+          rm -rf _site
+          python scripts/export_web/build_a1_11_site.py --source outputs/a1_12 --destination _site
           python scripts/export_web/apply_a1_11_ui.py --site _site
           node --check _site/app.js
           node --check _site/a1_10_runtime.js
           node --check _site/a1_11_runtime.js
           node web/tests/a1_11_smoke.js _site
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('_site/data/summary.json').read_text())
+          manifest = json.loads(Path('_site/data/manifest.json').read_text())
+          assert summary['stage'] == 'A1.12'
+          assert manifest['result_stage'] == 'A1.12'
+          assert manifest['ui_release_stage'] == 'A1.11'
+          PY
       - name: Build A1.12 planning canvas
         run: |
           python scripts/export_web/build_a1_12_site.py --source outputs/a1_12 --destination _site
@@ -211,6 +214,7 @@ jobs:
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
           assert manifest['result_stage'] == 'A1.12'
+          assert manifest['analysis_result_stage'] == 'A1.12'
           assert manifest['ui_release_stage'] == 'A1.12'
           required = [
               'destination-switcher', 'time-dependent-route-criticality',
@@ -221,8 +225,10 @@ jobs:
           ]
           assert all(item in manifest['ui_capabilities'] for item in required)
           html = Path('_site/index.html').read_text()
+          app = Path('_site/app.js').read_text()
           assert 'VULNERABLE POPULATION / EQUITY' in html
           assert 'data-ui-stage="A1.12"' in html
+          assert 'state.summary.stage !== state.manifest.result_stage' in app
           PY
       - uses: actions/upload-artifact@v4
         with:

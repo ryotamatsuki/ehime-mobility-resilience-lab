@@ -46,6 +46,6 @@ if (fs.existsSync(equityPath)) {
     if (!manifest.ui_capabilities.includes(capability)) throw new Error("missing capability " + capability);
   }
   if (!html.includes('data-ui-stage="A1.12"') || !html.includes("VULNERABLE POPULATION / EQUITY") || !html.includes("75歳以上") || !html.includes("85歳以上")) throw new Error("A1.12 generated UI missing");
-  if (!app.includes('"A1.12"')) throw new Error("app does not accept A1.12");
+  if (!app.includes("state.summary.stage !== state.manifest.result_stage")) throw new Error("app does not use manifest-driven result-stage validation");
 }
 console.log("A1.12 vulnerable-population/equity smoke passed for " + target);

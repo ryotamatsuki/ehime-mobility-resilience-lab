@@ -21,11 +21,13 @@ class ODTests(unittest.TestCase):
         for actual, expected in zip(
             [sum(first[(origin, destination)] for destination in destinations) for origin in origins],
             [5, 3],
+            strict=True,
         ):
             self.assertAlmostEqual(actual, expected, places=8)
         for actual, expected in zip(
             [sum(first[(origin, destination)] for origin in origins) for destination in destinations],
             [4, 4],
+            strict=True,
         ):
             self.assertAlmostEqual(actual, expected, places=8)
 
@@ -57,3 +59,7 @@ class ODTests(unittest.TestCase):
     def test_infeasible_od_raises_instead_of_silent_normalization(self):
         with self.assertRaises(InfeasibleConstraints):
             ipf(["a"], ["x"], [1], [2], {("a", "x"): 1})
+
+    def test_target_length_mismatch_is_rejected(self):
+        with self.assertRaises(InfeasibleConstraints):
+            ipf(["a", "b"], ["x"], [1], [1], {("a", "x"): 1, ("b", "x"): 1})
