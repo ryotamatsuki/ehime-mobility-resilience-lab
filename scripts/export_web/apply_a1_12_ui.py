@@ -3,9 +3,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 from html import escape
 from pathlib import Path
+
+from scripts.export_web.site_contract import (
+    copy_docs,
+    copy_web_assets,
+    ensure_stylesheet,
+    insert_before_recovery_card,
+    merge_manifest_capabilities,
+    read_json,
+    require_paths,
+    set_ui_stage,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CAPABILITIES = [
@@ -16,10 +26,6 @@ CAPABILITIES = [
     "equity-public-geojson",
     "current-official-age-context",
 ]
-
-
-def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def fmt_number(value, digits=0) -> str:
@@ -79,13 +85,17 @@ def _card(equity: dict) -> str:
 
 def apply(site: Path) -> dict:
     data = site / "data"
-    required = [
-        site / "index.html", site / "app.js", data / "summary.json", data / "manifest.json",
-        data / "equity_summary.json", data / "vulnerable_population_access.geojson",
-    ]
-    missing = [str(path) for path in required if not path.exists()]
-    if missing:
-        raise FileNotFoundError("A1.12 UI requires: " + ", ".join(missing))
+    require_paths(
+        "A1.12 UI",
+        [
+            site / "index.html",
+            site / "app.js",
+            data / "summary.json",
+            data / "manifest.json",
+            data / "equity_summary.json",
+            data / "vulnerable_population_access.geojson",
+        ],
+    )
     summary = read_json(data / "summary.json")
     equity = read_json(data / "equity_summary.json")
     manifest_path = data / "manifest.json"
@@ -95,37 +105,25 @@ def apply(site: Path) -> dict:
     if manifest.get("result_stage") != "A1.12" or manifest.get("ui_release_stage") != "A1.11":
         raise ValueError("A1.12 requires A1.11 predecessor UI")
 
-    shutil.copy2(ROOT / "web" / "a1_12.css", site / "a1_12.css")
+    copy_web_assets(site, ("a1_12.css",))
     index_path = site / "index.html"
     html = index_path.read_text(encoding="utf-8")
-    if 'href="a1_12.css"' not in html:
-        html = html.replace('</head>', '  <link rel="stylesheet" href="a1_12.css">\n</head>', 1)
-    html = html.replace('data-ui-stage="A1.11"', 'data-ui-stage="A1.12"', 1)
-    card = _card(equity)
-    marker = '<article class="analytics-card recovery-card">'
-    if 'id="equity-card"' not in html:
-        if marker not in html:
-            raise ValueError("A1.12 insertion marker missing")
-        html = html.replace(marker, card + marker, 1)
+    html = ensure_stylesheet(html, "a1_12.css")
+    html = set_ui_stage(html, "A1.12")
+    html = insert_before_recovery_card(html, _card(equity), identity_marker='id="equity-card"')
     index_path.write_text(html, encoding="utf-8")
 
-    manifest["ui_release_stage"] = "A1.12"
-    capabilities = list(manifest.get("ui_capabilities") or [])
-    for capability in CAPABILITIES:
-        if capability not in capabilities:
-            capabilities.append(capability)
-    manifest["ui_capabilities"] = capabilities
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    docs_out = site / "docs"
-    docs_out.mkdir(exist_ok=True)
-    for name in ("A1_12_VULNERABLE_EQUITY.md", "A1_12_QA_REPORT.md"):
-        src = ROOT / "docs" / name
-        if src.exists():
-            shutil.copy2(src, docs_out / name)
+    merge_manifest_capabilities(
+        manifest_path,
+        result_stage="A1.12",
+        ui_release_stage="A1.12",
+        capabilities=CAPABILITIES,
+    )
+    copy_docs(site, ("A1_12_VULNERABLE_EQUITY.md", "A1_12_QA_REPORT.md"))
 
     result = {
-        "result_stage": "A1.12", "ui_release_stage": "A1.12",
+        "result_stage": "A1.12",
+        "ui_release_stage": "A1.12",
         "groups": [item["id"] for item in equity["groups"]],
         "destinations": list(equity["destinations"]),
         "capabilities_added": CAPABILITIES,
