@@ -1,8 +1,7 @@
 """Build a Planning Canvas with the A1.11 time-criticality capability.
 
-The base exporter now validates successor result stages directly, so this layer
-no longer rewrites summary.stage to impersonate A1.9. A1.12 can reuse the same
-A1.11 capability layer while preserving its real result-stage identity.
+The base exporter validates successor result stages directly. This layer adds
+A1.11 artifacts/capabilities while preserving the real analysis result stage.
 """
 from __future__ import annotations
 
@@ -17,19 +16,19 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.apply_a1_10_ui import apply as apply_a1_10
 from scripts.export_web.build_a1_2_demo import build as build_base
+from scripts.export_web.site_contract import (
+    merge_manifest_capabilities,
+    read_json,
+    require_paths,
+)
 
 SUPPORTED_RESULT_STAGES = {"A1.11", "A1.12"}
-
-
-def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def build(source: Path, destination: Path) -> dict:
     summary_path = source / "summary.json"
     td_path = source / "time_dependent_criticality.json"
-    if not summary_path.exists() or not td_path.exists():
-        raise FileNotFoundError("A1.11 capability requires summary.json and time_dependent_criticality.json")
+    require_paths("A1.11 capability", (summary_path, td_path))
     summary = read_json(summary_path)
     td = read_json(td_path)
     result_stage = summary.get("stage")
@@ -43,19 +42,17 @@ def build(source: Path, destination: Path) -> dict:
 
     data = destination / "data"
     shutil.copy2(td_path, data / "time_dependent_criticality.json")
-
     manifest_path = data / "manifest.json"
     manifest = read_json(manifest_path)
-    if manifest.get("result_stage") != result_stage:
-        raise ValueError("A1.11 capability changed result-stage identity")
     if manifest.get("ui_release_stage") != "A1.10":
         raise ValueError("A1.11 expected A1.10 predecessor UI")
-    manifest["analysis_result_stage"] = result_stage
-    artifacts = list(manifest.get("artifacts") or [])
-    if "time_dependent_criticality.json" not in artifacts:
-        artifacts.append("time_dependent_criticality.json")
-    manifest["artifacts"] = artifacts
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    merge_manifest_capabilities(
+        manifest_path,
+        result_stage=result_stage,
+        ui_release_stage="A1.10",
+        capabilities=(),
+        artifacts=("time_dependent_criticality.json",),
+    )
 
     result = {
         "result_stage": result_stage,
