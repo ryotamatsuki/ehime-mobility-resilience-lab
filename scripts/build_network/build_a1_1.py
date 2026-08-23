@@ -23,6 +23,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +53,15 @@ DEPARTURE_SECONDS = 8 * 3600
 PADDING_DEGREES = 0.02
 
 
+@lru_cache(maxsize=32)
 def fetch(url: str, *, data: bytes | None = None, timeout: int = 120) -> bytes:
+    """Fetch one immutable source snapshot per exact request within this process.
+
+    Successor A1 stages intentionally rebuild predecessor products. Sharing the
+    exact response bytes for repeated URL/body/timeout requests makes one build
+    internally consistent and avoids needless repeated public-API downloads.
+    The cache is process-local only; every CI/run starts from a fresh snapshot.
+    """
     request = urllib.request.Request(
         url,
         data=data,
