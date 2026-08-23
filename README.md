@@ -10,17 +10,21 @@
 
 - [開発仕様書 Version 1.0](docs/SPECIFICATION.md)
 
+Competition-firstの実装順序は [Development Roadmap](ROADMAP.md)、審査戦略・開発優先順位の判断根拠は [Competition Judging Strategy](docs/COMPETITION_JUDGING_STRATEGY.md) を参照してください。
+
 Phase Aは愛媛県新地震被害想定GISに依存しません。公式値・加工値・モデル推計値・ユーザー仮定を区別し、結果には使用データ・モデル・パラメータ・生成日時を付与します。
 
 ## Status
 
-実装状況は、仕様書・決定記録・各検証文書に基づき更新します。
+A1.13 Robustness / Uncertaintyまで実装・実データ検証済みです。A1.12 Goldenを保護したまま、7つの事前定義条件 × 16時間帯でCritical Route / Tripの順位安定性と、4目的地 × all / 65+ / 75+ / 85+ のEquity方向安定性を検証します。Competition-firstの次StageはA1.14 Real-world Evidence Anchorです。
 
 ## デモ
 
-公開層は web ディレクトリからGitHub Pagesへ配信します。初期版では、実取得済みのOSM主要道路、R3道路交通センサス、R6 500m人口メッシュを使った道路Stress Testを表示します。GTFS、県内詳細OD、物流・救援拠点データは、取得条件が確定するまで画面上で外部入力または未計算と表示します。
+現在の公開実証は、大洲市「ぐるりんおおず」の実GTFSを中心に、OSM、100m人口、公式確認した病院・避難所データを組み合わせた公共交通Stress Testです。
 
-画面の基本操作は、平常時を見る → 止めてみる → 何が困る？ → どう戻す？ → どこが重要？です。任意の道路を選択できますが、Pages上で重い再計算を実行せず、未計算状態を明示します。
+Baseline / 右回り運休のAccessibility、06:00〜21:00の時間帯別影響、Route / Trip Criticality、Time-dependent Criticality、病院・避難所へのDestination切替、all / 65+ / 75+ / 85+ のEquityに加え、歩行速度・アクセス徒歩上限・乗換徒歩上限を変えたA1.13 Robustness / Uncertaintyを確認できます。Robustnessは確率や合成スコアではなく、事前定義条件のうち何条件で基準結論が維持されたかと、順位・方向が変わる境界条件をそのまま表示します。
+
+画面の基本操作は、平常時を見る → 止めてみる → 何が困る？ → どう戻す？ → どこが重要？です。道路、鉄道、航路、港湾、物流等は長期構想として保持しますが、未実装・未実証の機能を現在の完成機能として扱いません。
 
 ## インストールと実行
 
@@ -65,10 +69,13 @@ Aは公式観測・実績、Bは公式統計加工、Cはモデル推計、Dは�
 
 このプロダクトは南海トラフや地震の発生・被害を予測しません。実被害予測、リアルタイム災害対応指示、個人移動履歴、民間在庫、完全な企業間サプライチェーン、未確認GTFSの補完は対象外です。
 
-県内詳細自動車OD、交通量配分、GTFSアクセシビリティ、貨物・救援物流の実データ結果は、入力の取得と利用許諾が確定した範囲から段階的に有効化します。未計算をゼロ影響や実績値として表示しません。
+県内詳細自動車OD、交通量配分、貨物・救援物流の実データ結果は、入力の取得と利用許諾が確定した範囲から段階的に有効化します。未計算をゼロ影響や実績値として表示しません。
 
 ## ドキュメント
 
+- [Development Roadmap](ROADMAP.md)
+- [Competition Judging Strategy](docs/COMPETITION_JUDGING_STRATEGY.md)
+- [A1.13 Robustness / Uncertainty](docs/A1_13_ROBUSTNESS_UNCERTAINTY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data Availability Matrix](docs/DATA_AVAILABILITY_MATRIX.md)
 - [Model Method](docs/MODEL_METHOD.md)
