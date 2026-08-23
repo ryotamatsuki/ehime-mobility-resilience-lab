@@ -1,5 +1,8 @@
+import pytest
+
 from scripts.build_network.a1_13_sensitivity import (
     SENSITIVITY_CASES,
+    SensitivityCase,
     aggregate_candidate_ranking,
     direction,
     direction_stability,
@@ -21,6 +24,57 @@ def test_pre_registered_cases_are_stable_and_complete():
         "transfer_walk_15",
     ]
     assert len(SENSITIVITY_CASES) == 7
+
+
+def test_one_at_a_time_contract_rejects_multi_parameter_case():
+    invalid = (
+        SENSITIVITY_CASES[0],
+        SensitivityCase(
+            "invalid_multi",
+            "invalid",
+            3.6,
+            10.0,
+            10.0,
+            "walk_speed_kmh",
+            3.6,
+        ),
+    )
+    with pytest.raises(ValueError, match="exactly one parameter"):
+        validate_cases(invalid)
+
+
+def test_one_at_a_time_contract_rejects_mislabeled_change():
+    invalid = (
+        SENSITIVITY_CASES[0],
+        SensitivityCase(
+            "invalid_label",
+            "invalid",
+            3.6,
+            20.0,
+            10.0,
+            "max_access_walk_minutes",
+            20.0,
+        ),
+    )
+    with pytest.raises(ValueError, match="varied_parameter"):
+        validate_cases(invalid)
+
+
+def test_one_at_a_time_contract_rejects_duplicate_parameter_set():
+    invalid = (
+        SENSITIVITY_CASES[0],
+        SensitivityCase(
+            "duplicate_baseline",
+            "invalid",
+            4.8,
+            20.0,
+            10.0,
+            "walk_speed_kmh",
+            4.8,
+        ),
+    )
+    with pytest.raises(ValueError, match="duplicate"):
+        validate_cases(invalid)
 
 
 def test_uniform_walk_speed_scaling_is_exact_ratio():
