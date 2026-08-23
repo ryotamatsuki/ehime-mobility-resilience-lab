@@ -6,6 +6,11 @@ from typing import Any
 
 BASE_WALK_SPEED_KMH = 4.8
 DIRECTION_EPSILON = 0.0005
+SENSITIVITY_PARAMETER_FIELDS = (
+    "walk_speed_kmh",
+    "max_access_walk_minutes",
+    "max_transfer_walk_minutes",
+)
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,15 @@ SENSITIVITY_CASES: tuple[SensitivityCase, ...] = (
 
 
 def validate_cases(cases: tuple[SensitivityCase, ...] = SENSITIVITY_CASES) -> None:
+    """Validate the pre-registered one-at-a-time sensitivity design.
+
+    The baseline is fixed to the A1.11/A1.12 assumptions. Every non-baseline
+    case must change exactly one registered accessibility parameter, and its
+    ``varied_parameter`` / ``varied_value`` metadata must describe that exact
+    change. This prevents an accidental multi-parameter or mislabeled case from
+    entering the real-data run while still looking like a pre-registered OAT
+    sensitivity test.
+    """
     ids = [case.id for case in cases]
     if len(ids) != len(set(ids)):
         raise ValueError("A1.13 sensitivity case IDs must be unique")
@@ -101,13 +115,49 @@ def validate_cases(cases: tuple[SensitivityCase, ...] = SENSITIVITY_CASES) -> No
         or baseline.max_access_walk_minutes != 20.0
         or baseline.max_transfer_walk_minutes != 10.0
         or baseline.varied_parameter is not None
+        or baseline.varied_value is not None
     ):
         raise ValueError("A1.13 baseline contract changed")
+
+    seen_parameter_sets: set[tuple[float, float, float]] = set()
     for case in cases:
         if case.walk_speed_kmh <= 0:
             raise ValueError(f"{case.id}: walk speed must be positive")
         if case.max_access_walk_minutes < 0 or case.max_transfer_walk_minutes < 0:
             raise ValueError(f"{case.id}: walk limits must be non-negative")
+
+        parameter_set = (
+            float(case.walk_speed_kmh),
+            float(case.max_access_walk_minutes),
+            float(case.max_transfer_walk_minutes),
+        )
+        if parameter_set in seen_parameter_sets:
+            raise ValueError(f"{case.id}: duplicate A1.13 sensitivity parameter set")
+        seen_parameter_sets.add(parameter_set)
+
+        if case.id == "baseline":
+            continue
+
+        changed = [
+            field
+            for field in SENSITIVITY_PARAMETER_FIELDS
+            if float(getattr(case, field)) != float(getattr(baseline, field))
+        ]
+        if len(changed) != 1:
+            raise ValueError(
+                f"{case.id}: A1.13 one-at-a-time case must change exactly one parameter"
+            )
+        changed_field = changed[0]
+        if case.varied_parameter != changed_field:
+            raise ValueError(
+                f"{case.id}: varied_parameter must identify {changed_field}"
+            )
+        if case.varied_value is None or float(case.varied_value) != float(
+            getattr(case, changed_field)
+        ):
+            raise ValueError(
+                f"{case.id}: varied_value must match the changed parameter value"
+            )
 
 
 def scale_minutes(value: float, walk_speed_kmh: float) -> float:
