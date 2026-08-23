@@ -150,7 +150,7 @@ class GTFSFeed:
         result: list[dict[str, Any]] = []
         for trip_id in sorted(by_trip):
             trip_rows = by_trip[trip_id]
-            for first, second in zip(trip_rows, trip_rows[1:]):
+            for first, second in zip(trip_rows, trip_rows[1:], strict=False):
                 result.append(
                     {
                         "feed_id": self.feed_id,
