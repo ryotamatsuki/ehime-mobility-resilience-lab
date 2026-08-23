@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.site_contract import (
     copy_docs,
@@ -17,7 +21,6 @@ from scripts.export_web.site_contract import (
     set_ui_stage,
 )
 
-ROOT = Path(__file__).resolve().parents[2]
 SUPPORTED_RESULT_STAGES = {"A1.11", "A1.12"}
 CAPABILITIES = [
     "time-dependent-route-criticality",
