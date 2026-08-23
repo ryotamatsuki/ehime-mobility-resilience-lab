@@ -2,9 +2,11 @@
 
 更新日: 2026-08-24
 
-基準 main SHA: `dfef5c04ac95541bc62db711e5279de92daf0845`
+基準 main SHA（Competition Strategy統合開始時）: `2ab18cc43c1b79fb0c67c04e106b55e95939f0de`
 
 この文書は、`docs/SPECIFICATION.md` の長期構想を維持しつつ、公共交通オープンデータチャレンジ2026に向けた実装順序を明確化するための実行ロードマップである。
+
+Competition Strategyの判断根拠・審査員別観点・P0/P1/P2 blockerのSingle Source of Truthは [`docs/COMPETITION_JUDGING_STRATEGY.md`](docs/COMPETITION_JUDGING_STRATEGY.md) とする。新Stageの提案・完了時は、本書のRelease Gateに加えて「11.1 Mandatory Competition Gate」を必ず適用する。
 
 ## 1. 現在地
 
@@ -33,15 +35,18 @@ A1.H では、Golden regression、stage spoofing 除去、export contract 統合
 
 ここからは、機能数を増やすことよりも、審査員が短時間で確認できる「問題 → 発見 → 頑健性 → 対策 → 汎用性」を完成させることを優先する。
 
-実装順序は次のとおりとする。
+実行優先順序は次のとおりとする。
 
 1. A1.13 Robustness / Uncertainty
 2. A1.14 Real-world Evidence Anchor
 3. A1.15 Recovery Scenario Lab
-4. A1.16 Multi-feed / Multi-operator Validation
+4. Representative Finding consolidation（A5.C着手前Gate）
 5. A5.C Competition Mode UI
-6. A6.C Competition Release
-7. その後、A2 / A3 / A4 の県域・道路・物流拡張へ進む
+6. A1.16 Multi-feed / Multi-operator Validation
+7. A6.C Competition Release
+8. その後、A2 / A3 / A4 の県域・道路・物流拡張へ進む
+
+Stage番号は履歴・機能系統を表し、実行順序そのものではない。Competition-first期間は上記優先順を採用する。
 
 ---
 
@@ -50,6 +55,8 @@ A1.H では、Golden regression、stage spoofing 除去、export contract 統合
 ### 目的
 
 A1.11 / A1.12 で得られた Critical Route / Trip、時間帯、年齢層別負担差が、特定のモデル仮定だけに依存した結論ではないことを検証する。
+
+Competition blocker: **P1 — Robustness / Uncertainty**
 
 ### 原則
 
@@ -86,6 +93,7 @@ A1.11 / A1.12 で得られた Critical Route / Trip、時間帯、年齢層別�
 - [ ] 条件ごとの差分 provenance を保存
 - [ ] UI では合成スコアを作らず条件別結果を説明可能に表示
 - [ ] pytest / Ruff / source probe / generated-site smoke PASS
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 ---
 
@@ -94,6 +102,8 @@ A1.11 / A1.12 で得られた Critical Route / Trip、時間帯、年齢層別�
 ### 目的
 
 Stress Test の停止シナリオを、単なる仮定ではなく実在する交通・防災上の課題またはニーズへ接続する。
+
+Competition blocker: **P0 — Real-world problem anchor**
 
 ### Anchor 候補
 
@@ -120,6 +130,7 @@ Stress Test の停止シナリオを、単なる仮定ではなく実在する�
 - [ ] Evidence と D区分 scenario を混同しない
 - [ ] 出典・日時・適用範囲を provenance に保存
 - [ ] 「なぜこの Stress Test をするのか」を30秒で説明できる
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 ---
 
@@ -128,6 +139,8 @@ Stress Test の停止シナリオを、単なる仮定ではなく実在する�
 ### 目的
 
 「止めると何が困るか」という診断から、「限られた資源で何を戻せば最も回復するか」という処方へ進む。
+
+Competition blocker: **P0 — Diagnosis to Recovery**
 
 ### 初期 Recovery 候補
 
@@ -159,6 +172,7 @@ Stress Test の停止シナリオを、単なる仮定ではなく実在する�
 - [ ] 年齢層別 recovery を表示
 - [ ] 施策前提を provenance に保存
 - [ ] Competition story が「問題 → 発見 → 対策」までつながる
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 ---
 
@@ -168,12 +182,15 @@ Stress Test の停止シナリオを、単なる仮定ではなく実在する�
 
 Ehime Mobility Resilience Lab が「ぐるりんおおず専用」ではなく、GTFS を使った汎用的な交通レジリエンス分析手法であることを実証する。
 
+Competition blocker: **P2 — Multi-feed / Generalization**
+
 ### 方針
 
 - 愛媛県全域展開そのものを目的にしない。
 - 大洲とネットワーク構造が異なる GTFS を最低1フィード追加する。
 - 可能なら複数 route、乗換、複数 operator を含むケースを選ぶ。
 - 同じ分析コードを使い、地域固有 hard-code を追加しない。
+- P0/P1のEvidence ChainとCompetition Modeを先に完成させる。feed数の増加を目的化しない。
 
 ### 最低検証範囲
 
@@ -192,6 +209,7 @@ Ehime Mobility Resilience Lab が「ぐるりんおおず専用」ではなく�
 - [ ] 主要 schema 差異への failure / fallback behavior を確認
 - [ ] 第1・第2 feed の結果 provenance を分離
 - [ ] 「GTFSなら他地域でも動く」ことを再現手順付きで示す
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 > 注: 開発初期に「A1.7 Multi-feed / Multi-route Validation」という仮称を使ったが、A1.7 はその後 Time-of-day analysis に使用したため、Multi-feed 検証は正式に A1.16 とする。
 
@@ -202,6 +220,12 @@ Ehime Mobility Resilience Lab が「ぐるりんおおず専用」ではなく�
 ### 目的
 
 通常の研究・行政向け Lab UI と、コンテスト審査向けの情報量を分離する。
+
+Competition blocker: **P1 — Representative findings / Competition Mode UI**
+
+### Entry Gate — Representative Finding consolidation
+
+A5.C着手前に、応募時に前面へ出す代表的発見を1〜3件へ絞る。各発見は最新実データとRobustness結果で再検証し、因果主張・一般化・誇張をしない。
 
 ### Competition Mode の最初の30秒
 
@@ -222,12 +246,14 @@ Ehime Mobility Resilience Lab が「ぐるりんおおず専用」ではなく�
 
 ### Release Gate
 
+- [ ] Representative Findingを1〜3件に固定し実データで再検証
 - [ ] 30秒理解テスト
 - [ ] 5分デモシナリオ固定
 - [ ] 未実装UIを応募画面から除外
 - [ ] mobile / desktop smoke
 - [ ] Accessibility / keyboard / contrast 基本QA
 - [ ] Public URL で全デモが再現可能
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 ---
 
@@ -258,6 +284,8 @@ Ehime Mobility Resilience Lab が「ぐるりんおおず専用」ではなく�
 - [ ] raw data / license / attribution audit PASS
 - [ ] Public Pages E2E PASS
 - [ ] 応募画面に未完成機能が露出していない
+- [ ] `docs/COMPETITION_JUDGING_STRATEGY.md` のGrand Prize Candidate Gateを再評価
+- [ ] Section 11.1 Mandatory Competition Gate PASS
 
 ---
 
@@ -321,15 +349,43 @@ Phase B が実装されなくても Phase A / Competition Release は完成品�
 今後の Stage 追加は、次の順で評価する。
 
 1. 審査員または行政利用者の具体的な意思決定を改善するか
-2. 既存分析の信頼性・実証性を高めるか
-3. 代表的発見を明確にするか
-4. 既存機能で代替できないか
-5. 技術的面白さだけを理由にしていないか
+2. `docs/COMPETITION_JUDGING_STRATEGY.md` のP0 / P1 / P2 blockerのどれを解消するか
+3. 既存分析の信頼性・実証性を高めるか
+4. 代表的発見を明確にするか
+5. 既存機能で代替できないか
+6. 技術的面白さだけを理由にしていないか
 
-Competition Release までは、A2/A3/A4 の大規模実装より A1.13〜A1.16 を優先する。
+Competition Release までは、A2/A3/A4 の大規模実装より A1.13〜A1.16 / A5.C を優先する。
+
+### 11.1 Mandatory Competition Gate
+
+以下は、Competition-first期間の**全Stageについて、提案時と終了時の両方で回答する共通Gate**である。各Stage固有のRelease Gateを通過しても、本Gateに具体的に回答できない場合はCompetition Strategy上の完了とは扱わない。
+
+- [ ] Which judging weakness does this stage address?
+- [ ] Does it improve a P0 / P1 / P2 competition blocker?
+- [ ] What new evidence does it provide?
+- [ ] What can now be explained to a judge that could not be explained before?
+- [ ] Does it introduce unfinished UI or unnecessary scope?
+- [ ] Does it preserve analytical truthfulness?
+
+回答はStageのQA / design documentへ記録する。新Stage提案時に具体的回答がない場合、原則としてCompetition Release後へ優先順位を下げる。
+
+### 11.2 Current blocker mapping
+
+| Stage | Primary competition blocker | Judge-facing outcome |
+| --- | --- | --- |
+| A1.13 Robustness | P1 | 「この結論は単一条件の偶然ではない」と説明できる |
+| A1.14 Reality Anchor | P0 | 「なぜこのStress Testをするのか」を一次資料等で説明できる |
+| A1.15 Recovery | P0 | 「何を戻すとどれだけ回復するか」を比較できる |
+| Representative Finding consolidation | P1 | 1〜3件の記憶に残る発見へ集約できる |
+| A5.C Competition Mode | P1 | 問題 → 発見 → 対策を短時間で理解できる |
+| A1.16 Multi-feed | P2 | 大洲専用ではなくGTFS分析手法として再利用可能と示せる |
+| A6.C Release | all | 審査時に再現可能な完成品として固定できる |
 
 ## 12. 現在の次アクション
 
 **NEXT: A1.13 Robustness / Uncertainty**
 
 最初に Sensitivity parameter、base condition、評価対象 conclusion、出力 contract、Golden 非変更条件を固定し、その後に実装へ入る。
+
+A1.13完了時は、通常のRelease GateだけでなくSection 11.1 Mandatory Competition Gateを明示的に記録する。
