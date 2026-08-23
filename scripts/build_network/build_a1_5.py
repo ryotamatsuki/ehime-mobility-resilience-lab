@@ -28,7 +28,6 @@ from accessibility.official_facilities import official_hospitals, verify_osm_hos
 from common.provenance import make_provenance
 from scripts.build_network.build_a1_1 import (
     ANALYSIS_DATE,
-    DEPARTURE_SECONDS,
     GTFS_LANDING,
     GTFS_URL,
     POP_LANDING,
