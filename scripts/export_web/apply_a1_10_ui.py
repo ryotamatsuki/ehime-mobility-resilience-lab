@@ -1,9 +1,8 @@
-"""Apply the A1.10 destination-switcher UI to a generated A1.9 site.
+"""Apply the A1.10 destination-switcher capability to a compatible generated site.
 
-This postprocessor intentionally runs after the A1.9 generated-site regression
-smoke test. It does not change routing outputs or accessibility values; it only
-adds UI assets, metadata and documentation that expose already-computed A1.9
-hospital/shelter destinations consistently.
+The UI layer depends on shelter/hospital accessibility artifacts, not on a
+specific successor stage number. Result-stage identity is preserved in the
+manifest so later A1 layers can compose without rewriting analysis metadata.
 """
 from __future__ import annotations
 
@@ -13,6 +12,7 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SUPPORTED_RESULT_STAGES = {"A1.9", "A1.11", "A1.12"}
 A110_CAPABILITIES = [
     "destination-switcher",
     "shelter-map-layer",
@@ -39,11 +39,12 @@ def apply(site: Path) -> dict:
     ]
     missing = [str(path) for path in required if not path.exists()]
     if missing:
-        raise FileNotFoundError("A1.10 requires a complete generated A1.9 site: " + ", ".join(missing))
+        raise FileNotFoundError("A1.10 requires complete destination artifacts: " + ", ".join(missing))
 
     summary = read_json(data / "summary.json")
-    if summary.get("stage") != "A1.9" or summary.get("status") != "computed":
-        raise ValueError("A1.10 must be applied to a computed A1.9 result")
+    result_stage = summary.get("stage")
+    if result_stage not in SUPPORTED_RESULT_STAGES or summary.get("status") != "computed":
+        raise ValueError("A1.10 requires a computed shelter-capable A1 result")
     shelter_access = summary.get("shelter_accessibility") or {}
     for kind in ("emergency", "general", "welfare"):
         if shelter_access.get(kind, {}).get("usable_destinations", 0) < 1:
@@ -61,7 +62,7 @@ def apply(site: Path) -> dict:
         html = html.replace('</head>', '  <link rel="stylesheet" href="a1_10.css">\n</head>', 1)
     if 'src="a1_10_runtime.js"' not in html:
         html = html.replace('</body>', '  <script src="a1_10_runtime.js"></script>\n</body>', 1)
-    if '<body data-ui-stage="A1.10"' not in html:
+    if 'data-ui-stage=' not in html:
         html = html.replace('<body>', '<body data-ui-stage="A1.10" data-destination="hospital">', 1)
     html = html.replace(
         '実GTFS・OSM・人口データで公共交通停止時の病院Accessibilityを比較する交通レジリエンス・プランニングキャンバス',
@@ -71,8 +72,8 @@ def apply(site: Path) -> dict:
 
     manifest_path = data / "manifest.json"
     manifest = read_json(manifest_path)
-    if manifest.get("result_stage") != "A1.9":
-        raise ValueError("A1.10 manifest result_stage must remain A1.9")
+    if manifest.get("result_stage") != result_stage:
+        raise ValueError("A1.10 summary/manifest result-stage mismatch")
     manifest["ui_release_stage"] = "A1.10"
     capabilities = list(manifest.get("ui_capabilities") or [])
     for capability in A110_CAPABILITIES:
@@ -90,7 +91,7 @@ def apply(site: Path) -> dict:
 
     result = {
         "ui_release_stage": "A1.10",
-        "result_stage": "A1.9",
+        "result_stage": result_stage,
         "destinations": {
             "hospital": summary.get("osm", {}).get("hospital_destinations", 0),
             "emergency": shelter_access["emergency"]["usable_destinations"],
