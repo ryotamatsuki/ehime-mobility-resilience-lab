@@ -3,7 +3,7 @@ name: A1 Real Accessibility / Planning Canvas
 # GitHub Pages source must be configured as GitHub Actions.
 on:
   push:
-    branches: [main, feature/a1-11-time-dependent-criticality]
+    branches: [main, feature/a1-12-vulnerable-population-equity]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -52,12 +52,14 @@ jobs:
           test -f web/a1_10_runtime.js
           test -f web/a1_11.css
           test -f web/a1_11_runtime.js
+          test -f web/a1_12.css
           node --check web/app.js
           node --check web/a1_10_runtime.js
           node --check web/a1_11_runtime.js
           node web/tests/smoke.js web
           node web/tests/a1_10_smoke.js web
           node web/tests/a1_11_smoke.js web
+          node web/tests/a1_12_smoke.js web
 
   a1_source_probe:
     runs-on: ubuntu-latest
@@ -87,6 +89,13 @@ jobs:
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
+      - name: Probe official Ozu region-age population schema
+        run: |
+          for attempt in 1 2 3; do
+            if python scripts/ingest/probe_ozu_age_population.py; then break; fi
+            if [ "$attempt" -eq 3 ]; then exit 1; fi
+            sleep $((attempt * 10))
+          done
 
   a1_real_accessibility:
     needs: [python, web_source, a1_source_probe]
@@ -96,129 +105,130 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Build A1.11 time-dependent criticality
+      - name: Build A1.12 vulnerable population equity analysis
         run: |
           for attempt in 1 2 3; do
-            if PYTHONPATH=src python scripts/build_network/build_a1_11.py --output outputs/a1_11; then break; fi
+            if PYTHONPATH=src python scripts/build_network/build_a1_12.py --output outputs/a1_12; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-      - name: Validate A1.11 result contract
+      - name: Validate A1.12 result contract
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          root = Path('outputs/a1_11')
+          root = Path('outputs/a1_12')
           result = json.loads((root / 'summary.json').read_text())
+          equity = json.loads((root / 'equity_summary.json').read_text())
+          geo = json.loads((root / 'vulnerable_population_access.geojson').read_text())
           td = json.loads((root / 'time_dependent_criticality.json').read_text())
-          reference = json.loads((root / 'criticality.json').read_text())
-          temporal = json.loads((root / 'temporal_profile.json').read_text())
+          criticality = json.loads((root / 'criticality.json').read_text())
           shelters = json.loads((root / 'shelters.geojson').read_text())
-          shelter_mesh = json.loads((root / 'shelter_population_access.geojson').read_text())
-          assert result['stage'] == 'A1.11'
-          assert result['status'] == 'computed'
-          assert result['classification'] == 'C'
-          assert result['scenario_classification'] == 'D'
+          assert result['stage'] == 'A1.12' and result['status'] == 'computed'
+          assert result['classification'] == 'C' and result['scenario_classification'] == 'D'
           assert result['gtfs']['snapped_stops'] == result['gtfs']['stops']
           assert result['official_registry']['official_records_without_osm_match'] == 0
-          assert result['official_registry']['raw_workbook_published'] is False
-          assert result['transfer_network']['directed_edges'] > 0
-          assert result['temporal_window']['slots'] == 16 and len(temporal['rows']) == 16
-          assert reference['stage'] == 'A1.8'
-          assert result['shelter_registry']['license'] == 'CC BY 4.0'
           assert result['shelter_registry']['raw_workbook_published'] is False
-          assert shelters['features'] and len(shelter_mesh['features']) == result['population']['zones_in_envelope']
-          for kind in ('emergency', 'general', 'welfare'):
-              assert result['shelter_accessibility'][kind]['usable_destinations'] > 0
-          assert td['stage'] == 'A1.11' and td['analysis_destination'] == 'hospital'
-          assert len(td['rows']) == 16
-          assert td['rows'][0]['departure_time'] == '06:00'
-          assert td['rows'][-1]['departure_time'] == '21:00'
-          previous_remaining = None
-          for row in td['rows']:
-              assert len(row['route_ranking']) == result['gtfs']['active_routes']
-              assert len(row['trip_ranking']) == result['gtfs']['active_trips']
-              remaining = row['remaining_boardable_connections']
-              if previous_remaining is not None:
-                  assert remaining <= previous_remaining
-              previous_remaining = remaining
-              for item in row['route_ranking'] + row['trip_ranking']:
-                  impact = item['impact']
-                  assert impact['population_with_gt_1min_increase'] >= 0
-                  assert impact['accessibility_loss_30min_population'] >= -1e-6
-                  assert impact['accessibility_loss_60min_population'] >= -1e-6
-                  assert impact['mean_minutes_change'] >= -1e-6
-                  if item['evaluated'] is False:
-                      assert impact['population_with_gt_1min_increase'] == 0
-                      assert impact['mean_minutes_change'] == 0
-          at8 = next(row for row in td['rows'] if row['departure_time'] == '08:00')
-          assert at8['route_ranking'][0]['id'] == reference['route_ranking'][0]['id']
-          assert at8['trip_ranking'][0]['id'] == reference['trip_ranking'][0]['id']
-          meta = result['time_dependent_criticality']
-          assert meta['slots'] == 16
-          assert meta['total_route_evaluations'] > 0 and meta['total_trip_evaluations'] > 0
-          assert meta['peak_route_event'] and meta['peak_trip_event']
-          print(json.dumps(meta, ensure_ascii=False, indent=2))
+          assert td['stage'] == 'A1.11' and len(td['rows']) == 16
+          assert criticality['stage'] == 'A1.8'
+          assert shelters['features']
+          assert equity['stage'] == 'A1.12' and equity['status'] == 'computed'
+          assert equity['interpretation']['composite_score'] is False
+          current = equity['population_sources']['current_official_context']
+          assert current['classification'] == 'A'
+          assert current['license'] == 'CC BY 4.0'
+          assert current['raw_archive_published'] is False
+          assert 'not used to overwrite or downscale' in current['usage']
+          mesh = equity['population_sources']['mesh_age_population']
+          assert mesh['classification'] == 'B'
+          assert mesh['reference_year'] == 2020
+          assert 'no A1.12 downscaling' in mesh['method']
+          group_ids = [item['id'] for item in equity['groups']]
+          assert group_ids == ['all', '65plus', '75plus', '85plus']
+          assert len(geo['features']) == result['population']['zones_in_envelope']
+          for feature in geo['features']:
+              p = feature['properties']
+              assert 0 <= p['population_85plus'] <= p['population_75plus'] + 1e-6
+              assert p['population_75plus'] <= p['population_65plus'] + 1e-6
+              assert p['population_65plus'] <= p['population'] + 1e-6
+          for destination in ('hospital', 'emergency', 'general', 'welfare'):
+              item = equity['destinations'][destination]
+              assert set(item['groups']) == set(group_ids)
+              for group in group_ids:
+                  metrics = item['groups'][group]
+                  share = metrics['affected_share_gt1min_pct']
+                  assert share is None or 0 <= share <= 100
+              assert set(item['gaps_vs_all']) == {'65plus', '75plus', '85plus'}
+          totals = result['vulnerable_population']['group_totals_in_analysis_envelope']
+          assert 0 <= totals['85plus'] <= totals['75plus'] <= totals['65plus'] <= totals['all']
+          assert result['vulnerable_population']['spatial_downscaling_performed'] is False
+          print(json.dumps({
+              'group_totals': totals,
+              'current_official_context': current,
+              'hospital': equity['destinations']['hospital'],
+              'welfare': equity['destinations']['welfare'],
+          }, ensure_ascii=False, indent=2))
           PY
-      - name: Regression smoke A1.9 and A1.10 predecessor site
+      - name: Regression smoke A1.11 predecessor site
         run: |
-          rm -rf /tmp/a1_9_compat _site
-          cp -R outputs/a1_11 /tmp/a1_9_compat
+          rm -rf /tmp/a1_11_compat _site
+          cp -R outputs/a1_12 /tmp/a1_11_compat
           python - <<'PY'
           import json
           from pathlib import Path
-          p = Path('/tmp/a1_9_compat/summary.json')
+          p = Path('/tmp/a1_11_compat/summary.json')
           s = json.loads(p.read_text())
-          s['stage'] = 'A1.9'
-          s['title'] = '大洲市 避難所 Accessibility / A1.11 regression view'
+          s['stage'] = 'A1.11'
+          s['title'] = '大洲市 A1.11 predecessor regression view'
           p.write_text(json.dumps(s, ensure_ascii=False, indent=2))
           PY
-          python scripts/export_web/build_a1_2_demo.py --source /tmp/a1_9_compat --destination _site
-          node --check _site/app.js
-          node web/tests/smoke.js _site
-          python scripts/export_web/apply_a1_10_ui.py --site _site
-          node --check _site/a1_10_runtime.js
-          node web/tests/a1_10_smoke.js _site
-      - name: Build A1.11 planning canvas
-        run: |
-          python scripts/export_web/build_a1_11_site.py --source outputs/a1_11 --destination _site
+          python scripts/export_web/build_a1_11_site.py --source /tmp/a1_11_compat --destination _site
           python scripts/export_web/apply_a1_11_ui.py --site _site
-      - name: Smoke generated A1.11 site
-        run: |
           node --check _site/app.js
           node --check _site/a1_10_runtime.js
           node --check _site/a1_11_runtime.js
           node web/tests/a1_11_smoke.js _site
+      - name: Build A1.12 planning canvas
+        run: |
+          python scripts/export_web/build_a1_12_site.py --source outputs/a1_12 --destination _site
+          python scripts/export_web/apply_a1_12_ui.py --site _site
+      - name: Smoke generated A1.12 site
+        run: |
+          node --check _site/app.js
+          node --check _site/a1_10_runtime.js
+          node --check _site/a1_11_runtime.js
+          node web/tests/a1_12_smoke.js _site
+          test -f _site/data/equity_summary.json
+          test -f _site/data/vulnerable_population_access.geojson
           test -f _site/data/time_dependent_criticality.json
-          test -f _site/data/temporal_profile.json
-          test -f _site/data/criticality.json
           test -f _site/data/shelters.geojson
-          test -f _site/data/shelter_accessibility.json
-          test -f _site/data/shelter_population_access.geojson
           test ! -e _site/data/official_medical.xlsx
           test ! -e _site/data/ozu_shelters.xlsx
+          test -z "$(find _site -type f \( -iname '*.zip' -o -iname '*.xlsx' -o -iname '*.xls' \) -print -quit)"
           python - <<'PY'
           import json
           from pathlib import Path
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
           assert manifest['stage'] == 'A1.3'
-          assert manifest['result_stage'] == 'A1.11'
-          assert manifest['ui_release_stage'] == 'A1.11'
+          assert manifest['result_stage'] == 'A1.12'
+          assert manifest['ui_release_stage'] == 'A1.12'
           required = [
-              'destination-switcher', 'shelter-map-layer',
-              'time-dependent-route-criticality', 'time-dependent-trip-criticality',
-              'hourly-criticality-matrix', 'criticality-peak-time',
+              'destination-switcher', 'time-dependent-route-criticality',
+              'time-dependent-trip-criticality', 'hourly-criticality-matrix',
+              'vulnerable-population-65plus', 'vulnerable-population-75plus',
+              'vulnerable-population-85plus', 'equity-gap-metrics',
+              'equity-public-geojson', 'current-official-age-context',
           ]
           assert all(item in manifest['ui_capabilities'] for item in required)
           html = Path('_site/index.html').read_text()
-          assert 'TIME × SERVICE CRITICALITY' in html
-          assert 'data-ui-stage="A1.11"' in html
+          assert 'VULNERABLE POPULATION / EQUITY' in html
+          assert 'data-ui-stage="A1.12"' in html
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-11-planning-canvas
+          name: a1-12-planning-canvas
           path: |
-            outputs/a1_11
+            outputs/a1_12
             _site
           if-no-files-found: error
       - uses: actions/configure-pages@v5
