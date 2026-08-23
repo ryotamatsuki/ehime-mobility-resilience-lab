@@ -130,7 +130,7 @@ def build_road_census() -> dict[str, Any]:
         raw_volume = str(row.get("２４時間自動車類交通量（台）") or "").strip()
         record["directions"][direction] = float(raw_volume) if raw_volume else 0.0
     compact = []
-    for section, record in sorted(records.items()):
+    for record in (item for _, item in sorted(records.items())):
         record["observed_24h_total"] = round(sum(record["directions"].values()), 2)
         del record["directions"]
         record["classification"] = "A"
