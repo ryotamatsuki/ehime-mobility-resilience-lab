@@ -1,10 +1,8 @@
-"""Build an A1.11 Planning Canvas without weakening predecessor contracts.
+"""Build a Planning Canvas with the A1.11 time-criticality capability.
 
-The stable base exporter and A1.10 postprocessor deliberately accept A1.9.
-A1.11 therefore builds a temporary A1.9-compatible view from the freshly
-computed successor output, passes the existing A1.9/A1.10 gates unchanged,
-then restores the real A1.11 summary and manifest result stage before the
-A1.11 UI postprocessor runs.
+The base exporter now validates successor result stages directly, so this layer
+no longer rewrites summary.stage to impersonate A1.9. A1.12 can reuse the same
+A1.11 capability layer while preserving its real result-stage identity.
 """
 from __future__ import annotations
 
@@ -12,7 +10,6 @@ import argparse
 import json
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +17,8 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.apply_a1_10_ui import apply as apply_a1_10
 from scripts.export_web.build_a1_2_demo import build as build_base
+
+SUPPORTED_RESULT_STAGES = {"A1.11", "A1.12"}
 
 
 def read_json(path: Path) -> dict:
@@ -30,40 +29,36 @@ def build(source: Path, destination: Path) -> dict:
     summary_path = source / "summary.json"
     td_path = source / "time_dependent_criticality.json"
     if not summary_path.exists() or not td_path.exists():
-        raise FileNotFoundError("A1.11 source requires summary.json and time_dependent_criticality.json")
+        raise FileNotFoundError("A1.11 capability requires summary.json and time_dependent_criticality.json")
     summary = read_json(summary_path)
     td = read_json(td_path)
-    if summary.get("stage") != "A1.11" or summary.get("status") != "computed":
-        raise ValueError("A1.11 source summary contract invalid")
+    result_stage = summary.get("stage")
+    if result_stage not in SUPPORTED_RESULT_STAGES or summary.get("status") != "computed":
+        raise ValueError("A1.11 capability requires a computed A1.11/A1.12 result")
     if td.get("stage") != "A1.11" or len(td.get("rows") or []) != 16:
         raise ValueError("A1.11 time-dependent criticality contract invalid")
 
-    with tempfile.TemporaryDirectory(prefix="a1_11_compat_") as raw_temp:
-        compat = Path(raw_temp) / "a1_9_compat"
-        shutil.copytree(source, compat)
-        compat_summary_path = compat / "summary.json"
-        compat_summary = read_json(compat_summary_path)
-        compat_summary["stage"] = "A1.9"
-        compat_summary["title"] = "大洲市 避難所 Accessibility / A1.11 predecessor view"
-        compat_summary_path.write_text(json.dumps(compat_summary, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        build_base(compat, ROOT / "web", destination)
-        apply_a1_10(destination)
+    build_base(source, ROOT / "web", destination)
+    apply_a1_10(destination)
 
     data = destination / "data"
-    shutil.copy2(summary_path, data / "summary.json")
     shutil.copy2(td_path, data / "time_dependent_criticality.json")
 
     manifest_path = data / "manifest.json"
     manifest = read_json(manifest_path)
+    if manifest.get("result_stage") != result_stage:
+        raise ValueError("A1.11 capability changed result-stage identity")
     if manifest.get("ui_release_stage") != "A1.10":
         raise ValueError("A1.11 expected A1.10 predecessor UI")
-    manifest["result_stage"] = "A1.11"
-    manifest["analysis_result_stage"] = "A1.11"
+    manifest["analysis_result_stage"] = result_stage
+    artifacts = list(manifest.get("artifacts") or [])
+    if "time_dependent_criticality.json" not in artifacts:
+        artifacts.append("time_dependent_criticality.json")
+    manifest["artifacts"] = artifacts
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
     result = {
-        "result_stage": "A1.11",
+        "result_stage": result_stage,
         "predecessor_ui_stage": "A1.10",
         "slots": len(td["rows"]),
         "destination": str(destination),
