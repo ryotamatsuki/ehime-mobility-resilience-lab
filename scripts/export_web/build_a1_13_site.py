@@ -54,6 +54,15 @@ def build(source: Path, destination: Path) -> dict:
     manifest = read_json(manifest_path)
     if manifest.get("result_stage") != "A1.12" or manifest.get("ui_release_stage") != "A1.12":
         raise ValueError("A1.13 expected completed A1.12 predecessor UI")
+
+    # Explicitly promote the analysis result contract only after A1.12 site
+    # composition has completed. This is not stage spoofing: summary.json is
+    # already the real A1.13 result and the manifest is advanced to match it.
+    manifest["result_stage"] = "A1.13"
+    manifest["analysis_result_stage"] = "A1.13"
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     merge_manifest_capabilities(
         manifest_path,
         result_stage="A1.13",
