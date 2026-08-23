@@ -56,6 +56,6 @@ if (fs.existsSync(tdPath)) {
     if (!manifest.ui_capabilities.includes(capability)) throw new Error("A1.11 capability missing: " + capability);
   }
   if (!html.includes('data-ui-stage="A1.11"') || !html.includes("TIME × SERVICE CRITICALITY")) throw new Error("A1.11 generated UI marker missing");
-  if (!app.includes('"A1.11"')) throw new Error("Planning Canvas app does not accept A1.11 result stage");
+  if (!app.includes("state.summary.stage !== state.manifest.result_stage")) throw new Error("Planning Canvas does not use manifest-driven result-stage validation");
 }
 console.log("A1.11 time-dependent criticality smoke passed for " + target);
