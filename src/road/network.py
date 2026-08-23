@@ -78,7 +78,7 @@ class RoadNetwork(DirectedGraph):
             lanes = max(1.0, _parse_number(tags.get("lanes"), DEFAULT_LANES.get(base_highway, 1)))
             capacity = lanes * 650.0
             oneway = str(tags.get("oneway", "")).lower()
-            for index, (first, second) in enumerate(zip(geometry, geometry[1:])):
+            for index, (first, second) in enumerate(zip(geometry, geometry[1:], strict=False)):
                 a = (float(first["lat"]), float(first["lon"]))
                 b = (float(second["lat"]), float(second["lon"]))
                 length = max(_haversine_km(a, b), 0.001)
