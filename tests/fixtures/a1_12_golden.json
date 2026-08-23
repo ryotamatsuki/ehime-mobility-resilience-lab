@@ -1,0 +1,34 @@
+{
+  "reference_main_sha": "3077d922ed225356fb654c78414fd14bda05d236",
+  "analysis_zones": 1840,
+  "mesh_group_totals": {
+    "all": 26553.4167,
+    "65plus": 8231.8731,
+    "75plus": 4197.079,
+    "85plus": 1606.2811
+  },
+  "current_official_context": {
+    "region_rows": 40,
+    "population": 37725.0,
+    "population_65plus": 14868.0,
+    "population_75plus": 8700.0,
+    "population_85plus": 3247.0,
+    "share_65plus_pct": 39.412,
+    "share_75plus_pct": 23.062,
+    "share_85plus_pct": 8.607
+  },
+  "destinations": {
+    "hospital": {
+      "all": {"affected_gt1min": 2030.3675, "affected_share_gt1min_pct": 7.646, "mean_minutes_change": 0.732},
+      "65plus": {"affected_gt1min": 639.3862, "affected_share_gt1min_pct": 7.767, "mean_minutes_change": 0.793},
+      "75plus": {"affected_gt1min": 353.2373, "affected_share_gt1min_pct": 8.416, "mean_minutes_change": 0.887},
+      "85plus": {"affected_gt1min": 143.1335, "affected_share_gt1min_pct": 8.911, "mean_minutes_change": 0.988}
+    },
+    "welfare": {
+      "all": {"affected_gt1min": 981.8614, "affected_share_gt1min_pct": 3.698, "mean_minutes_change": 0.23},
+      "65plus": {"affected_gt1min": 367.6598, "affected_share_gt1min_pct": 4.466, "mean_minutes_change": 0.247},
+      "75plus": {"affected_gt1min": 184.0505, "affected_share_gt1min_pct": 4.385, "mean_minutes_change": 0.257},
+      "85plus": {"affected_gt1min": 70.4401, "affected_share_gt1min_pct": 4.385, "mean_minutes_change": 0.302}
+    }
+  }
+}
