@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from html import escape
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
 from scripts.export_web.site_contract import (
     copy_docs,
@@ -17,7 +21,6 @@ from scripts.export_web.site_contract import (
     set_ui_stage,
 )
 
-ROOT = Path(__file__).resolve().parents[2]
 CAPABILITIES = [
     "vulnerable-population-65plus",
     "vulnerable-population-75plus",
