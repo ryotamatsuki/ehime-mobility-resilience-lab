@@ -80,7 +80,8 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def _finite_or_none(value: float) -> float | None:
-    return round(float(value), 6) if math.isfinite(float(value)) else None
+    """Match the two-decimal zone-minute precision consumed by A1.12 equity."""
+    return round(float(value), 2) if math.isfinite(float(value)) else None
 
 
 def _point_records(path: Path, *, kind: str | None = None) -> list[dict[str, Any]]:
@@ -761,6 +762,7 @@ def build(output: Path) -> dict[str, Any]:
             "temporal_step_minutes": TEMPORAL_STEP_MINUTES,
             "sensitivity_cases": [case.as_dict() for case in SENSITIVITY_CASES],
             "walking_time_transform": "baseline_minutes * 4.8 / sensitivity_speed_kmh",
+            "equity_zone_minute_precision": 2,
             "ranking_order": [
                 "population_with_gt_1min_increase desc",
                 "mean_minutes_change desc",
@@ -775,6 +777,7 @@ def build(output: Path) -> dict[str, Any]:
             "Sensitivity cases perturb one model assumption at a time and do not represent joint worst-case mobility conditions.",
             "Criticality ranking remains hospital-access consequence only; ridership, operating cost and failure likelihood are not included.",
             "Equity direction is descriptive and is not a test of statistical significance or a normative priority score.",
+            "A1.13 equity aggregation preserves the same two-decimal zone travel-time precision consumed by the A1.12 public GeoJSON contract.",
             "Age-group results remain based on the 2020 simplified 100 m population source; current 2026 regional totals are not spatially downscaled.",
             "All outages remain D stress-test assumptions rather than damage forecasts.",
         ],
