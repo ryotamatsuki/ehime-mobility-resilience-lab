@@ -46,6 +46,22 @@ All seven cases are run. No case may be removed because its result is inconvenie
 
 The cases use one-at-a-time perturbation. This keeps interpretation transparent. Combined worst-case assumptions are deliberately deferred unless a later evidence-based reason requires them.
 
+The executable case registry validates this OAT contract before any real-data build: every non-baseline case must differ from the protected baseline in exactly one registered parameter, its `varied_parameter` metadata must name that parameter, its `varied_value` must equal the changed value, and duplicate parameter sets are rejected.
+
+### Fixed inherited assumptions
+
+The following remain fixed across all seven cases so that A1.13 tests specific modelling assumptions rather than silently redefining the predecessor model:
+
+- transfer buffer: A1.6 inherited value, 1 minute
+- criticality destination: hospital, matching A1.11
+- criticality time window: 06:00–21:00, hourly, matching A1.11
+- equity reference departure: 08:00, matching A1.12
+- equity disruption: the same clockwise-route D stress test as A1.12
+- ranking rule: >1 minute affected population desc, mean degradation desc, stable ID asc
+- A1.12 age weights and destination definitions remain unchanged
+
+The 1.8 km/h case is a model boundary test. It is not a claim that all older adults walk at 0.5 m/s, and walking speed is never assigned by age group in A1.13.
+
 ## 5. Walking-time scaling
 
 The OSM pedestrian graph uses a uniform 4.8 km/h walking speed. A1.13 therefore computes network shortest-path walk times once at the baseline speed and transforms them by the exact ratio:
@@ -143,8 +159,46 @@ A1.13 is complete only when all of the following pass:
 - equity-direction stability is persisted for all four destinations and all three older age groups
 - changed assumptions are persisted in provenance
 - no composite robustness or vulnerability score is introduced
-- unit tests cover scaling, aggregation and direction-stability logic
+- unit tests cover scaling, aggregation, OAT case validation and direction-stability logic
 - pytest and Ruff pass
 - official source probes pass
 - generated A1.13 site smoke passes
 - raw ZIP/XLS/XLSX are absent from the public site
+
+## 13. Mandatory Competition Gate
+
+### Which judging weakness does this stage address?
+
+**P1 — Robustness / Uncertainty.** The stage directly answers whether the strongest A1.11/A1.12 findings survive reasonable changes in accessibility assumptions.
+
+### Does it improve a P0 / P1 / P2 competition blocker?
+
+Yes. It closes the P1 blocker identified in `docs/COMPETITION_JUDGING_STRATEGY.md` by replacing a single-condition conclusion with explicit condition-preservation evidence and boundary cases.
+
+### What new evidence does it provide?
+
+The verified real-data run shows:
+
+- baseline A1.11/A1.12 equivalence: PASS
+- reference Critical Route `11`: Top 1 in 4/7 cases and Top 3 in 7/7 cases
+- reference Critical Trip `11+0+毎日+3`: Top 1 in 4/7 cases and Top 3 in 5/7 cases
+- slower-walking cases change the day-level Top 1 route to route `12`
+- the hospital 85+ mean-time degradation gap remains positive in 7/7 cases
+- the hospital 85+ >1-minute affected-share gap remains positive in 6/7 cases and reverses only at the 1.8 km/h boundary
+- explicit boundary cases are `walk_speed_3_6`, `walk_speed_1_8`, and `access_walk_10`
+
+### What can now be explained to a judge that could not be explained before?
+
+The project can now say that route `11` remains within the top three critical routes under every pre-registered assumption, while its exact Top 1 position and the trip-level ranking are more assumption-sensitive. It can also identify which equity statements are stable and which must be qualified. This is stronger and more truthful than presenting one baseline ranking as universally robust.
+
+### Does it introduce unfinished UI or unnecessary scope?
+
+No. A1.13 adds one evidence-focused robustness card to the existing Planning Canvas and does not expose new future transport modes or speculative capabilities. Combined multi-parameter worst-case scenarios are deliberately deferred.
+
+### Does it preserve analytical truthfulness?
+
+Yes. No probability, confidence interval, failure probability, statistical significance claim, composite Robustness Score, or normative priority score is introduced. A1.12 Golden values remain protected and the slower walking cases are D analytical assumptions, not age-specific factual claims.
+
+### Competition-facing consequence
+
+A1.13 does not prove that one route is universally “the most important.” It establishes a more defensible statement: route-level criticality is comparatively stable at Top-3 level, exact Top-1 and trip-level priority are sensitive to walking/access assumptions, and those sensitivity boundaries are now visible rather than hidden.
