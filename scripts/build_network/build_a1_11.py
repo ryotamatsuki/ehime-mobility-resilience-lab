@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -199,10 +198,12 @@ def build(output: Path) -> dict[str, Any]:
     }
     all_trip_ids = sorted({str(c["trip_id"]) for c in connections})
     all_route_ids = sorted({trip_routes[trip_id] for trip_id in all_trip_ids})
-    first_departure = {
-        trip_id: min(int(c["departure_seconds"]) for c in connections if str(c["trip_id"]) == trip_id)
-        for trip_id in all_trip_ids
-    }
+    # connections are sorted by departure, so setdefault captures each trip's
+    # first departure in a single O(connections) pass instead of rescanning the
+    # full list once per trip.
+    first_departure: dict[str, int] = {}
+    for connection in connections:
+        first_departure.setdefault(str(connection["trip_id"]), int(connection["departure_seconds"]))
 
     rows: list[dict[str, Any]] = []
     total_route_evaluations = 0
@@ -320,8 +321,8 @@ def build(output: Path) -> dict[str, Any]:
     peak_trip = peak_event(rows, "trip_ranking")
     top_route_ids = [row["top_route"]["id"] for row in rows if row["top_route"]]
     top_trip_ids = [row["top_trip"]["id"] for row in rows if row["top_trip"]]
-    route_changes = sum(1 for a, b in zip(top_route_ids, top_route_ids[1:]) if a != b)
-    trip_changes = sum(1 for a, b in zip(top_trip_ids, top_trip_ids[1:]) if a != b)
+    route_changes = sum(1 for a, b in zip(top_route_ids, top_route_ids[1:], strict=False) if a != b)
+    trip_changes = sum(1 for a, b in zip(top_trip_ids, top_trip_ids[1:], strict=False) if a != b)
 
     provenance = make_provenance(
         "a1-11-ozu-time-dependent-criticality",
