@@ -1,4 +1,4 @@
-"""Apply A1.11 time-dependent criticality UI to an A1.10-compatible site."""
+"""Apply the A1.11 time-dependent criticality UI capability."""
 from __future__ import annotations
 
 import argparse
@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SUPPORTED_RESULT_STAGES = {"A1.11", "A1.12"}
 CAPABILITIES = [
     "time-dependent-route-criticality",
     "time-dependent-trip-criticality",
@@ -30,10 +31,11 @@ def apply(site: Path) -> dict:
     payload = read_json(data / "time_dependent_criticality.json")
     manifest_path = data / "manifest.json"
     manifest = read_json(manifest_path)
-    if summary.get("stage") != "A1.11" or payload.get("stage") != "A1.11":
+    result_stage = summary.get("stage")
+    if result_stage not in SUPPORTED_RESULT_STAGES or payload.get("stage") != "A1.11":
         raise ValueError("A1.11 analysis contract missing")
-    if manifest.get("result_stage") != "A1.11" or manifest.get("ui_release_stage") != "A1.10":
-        raise ValueError("A1.11 requires the A1.10 predecessor UI and A1.11 result stage")
+    if manifest.get("result_stage") != result_stage or manifest.get("ui_release_stage") != "A1.10":
+        raise ValueError("A1.11 requires A1.10 UI while preserving the real result stage")
     if len(payload.get("rows") or []) != 16:
         raise ValueError("A1.11 requires 16 hourly slots")
 
@@ -68,16 +70,6 @@ def apply(site: Path) -> dict:
         html = html.replace(marker, card + marker, 1)
     index_path.write_text(html, encoding="utf-8")
 
-    app_path = site / "app.js"
-    app = app_path.read_text(encoding="utf-8")
-    old = '["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9"]'
-    new = '["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9","A1.11"]'
-    if old in app:
-        app = app.replace(old, new)
-    elif '"A1.11"' not in app:
-        raise ValueError("A1.11 app stage contract patch target missing")
-    app_path.write_text(app, encoding="utf-8")
-
     manifest["ui_release_stage"] = "A1.11"
     capabilities = list(manifest.get("ui_capabilities") or [])
     for capability in CAPABILITIES:
@@ -93,7 +85,12 @@ def apply(site: Path) -> dict:
         if src.exists():
             shutil.copy2(src, docs_out / name)
 
-    result = {"result_stage": "A1.11", "ui_release_stage": "A1.11", "slots": len(payload["rows"]), "capabilities_added": CAPABILITIES}
+    result = {
+        "result_stage": result_stage,
+        "ui_release_stage": "A1.11",
+        "slots": len(payload["rows"]),
+        "capabilities_added": CAPABILITIES,
+    }
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return result
 
