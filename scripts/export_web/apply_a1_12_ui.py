@@ -1,4 +1,4 @@
-"""Apply A1.12 vulnerable-population/equity UI to an A1.11 site."""
+"""Apply A1.12 vulnerable-population/equity UI to an A1.11-capable site."""
 from __future__ import annotations
 
 import argparse
@@ -108,16 +108,6 @@ def apply(site: Path) -> dict:
             raise ValueError("A1.12 insertion marker missing")
         html = html.replace(marker, card + marker, 1)
     index_path.write_text(html, encoding="utf-8")
-
-    app_path = site / "app.js"
-    app = app_path.read_text(encoding="utf-8")
-    old = '["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9","A1.11"]'
-    new = '["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9","A1.11","A1.12"]'
-    if old in app:
-        app = app.replace(old, new)
-    elif '"A1.12"' not in app:
-        raise ValueError("A1.12 app stage contract patch target missing")
-    app_path.write_text(app, encoding="utf-8")
 
     manifest["ui_release_stage"] = "A1.12"
     capabilities = list(manifest.get("ui_capabilities") or [])
