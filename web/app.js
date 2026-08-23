@@ -443,7 +443,7 @@
       loadJsonOptional("shelters.geojson"), loadJsonOptional("shelter_population_access.geojson")
     ]).then(function (values) {
       state.summary = values[0]; state.manifest = values[1]; state.routes = values[2]; state.stops = values[3]; state.facilities = values[4]; state.hospitalPopulation = values[5]; state.shelters = values[6]; state.shelterPopulation = values[7];
-      if (["A1.1","A1.5","A1.6","A1.7","A1.8","A1.9"].indexOf(state.summary.stage) < 0) throw new Error("analysis stage contract mismatch");
+      if (!state.summary.stage || state.summary.stage !== state.manifest.result_stage) throw new Error("analysis stage contract mismatch");
       if (["A1.2","A1.3"].indexOf(state.manifest.stage) < 0) throw new Error("public UI stage contract mismatch");
       ensureDestinationSelector(); initializeMap(); renderMetadata(); renderProvenance(); renderMiniMaps(); renderDistributionChart(); bindControls(); setScenario("baseline");
     }).catch(setError);
