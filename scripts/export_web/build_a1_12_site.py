@@ -1,11 +1,10 @@
-"""Build an A1.12 Planning Canvas while preserving A1.11 predecessor gates."""
+"""Build an A1.12 Planning Canvas by composing verified UI capabilities."""
 from __future__ import annotations
 
 import argparse
 import json
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -29,26 +28,26 @@ def build(source: Path, destination: Path) -> dict:
     if summary.get("stage") != "A1.12" or equity.get("stage") != "A1.12":
         raise ValueError("A1.12 source stage contract invalid")
 
-    with tempfile.TemporaryDirectory(prefix="a1_12_compat_") as raw:
-        compat = Path(raw) / "a1_11_compat"
-        shutil.copytree(source, compat)
-        p = compat / "summary.json"
-        predecessor = read_json(p)
-        predecessor["stage"] = "A1.11"
-        predecessor["title"] = "大洲市 A1.11 predecessor view for A1.12"
-        p.write_text(json.dumps(predecessor, ensure_ascii=False, indent=2), encoding="utf-8")
-        build_a1_11_site(compat, destination)
-        apply_a1_11(destination)
+    # Compose capabilities without mutating summary.stage. The base exporter,
+    # A1.10 destination UI and A1.11 time-criticality UI all preserve A1.12 as
+    # the real analysis result stage.
+    build_a1_11_site(source, destination)
+    apply_a1_11(destination)
 
     data = destination / "data"
-    shutil.copy2(source / "summary.json", data / "summary.json")
     shutil.copy2(source / "equity_summary.json", data / "equity_summary.json")
     shutil.copy2(source / "vulnerable_population_access.geojson", data / "vulnerable_population_access.geojson")
     manifest_path = data / "manifest.json"
     manifest = read_json(manifest_path)
+    if manifest.get("result_stage") != "A1.12":
+        raise ValueError("A1.12 result-stage identity was lost while composing predecessor UI")
     if manifest.get("ui_release_stage") != "A1.11":
         raise ValueError("A1.12 expected A1.11 predecessor UI")
-    manifest["result_stage"] = "A1.12"
+    artifacts = list(manifest.get("artifacts") or [])
+    for name in ("equity_summary.json", "vulnerable_population_access.geojson"):
+        if name not in artifacts:
+            artifacts.append(name)
+    manifest["artifacts"] = artifacts
     manifest["analysis_result_stage"] = "A1.12"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     result = {"result_stage": "A1.12", "predecessor_ui_stage": "A1.11", "destination": str(destination)}
