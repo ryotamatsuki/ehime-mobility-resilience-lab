@@ -16,13 +16,13 @@ Phase Aは愛媛県新地震被害想定GISに依存しません。公式値・�
 
 ## Status
 
-A1.12 Vulnerable Population / Equity AnalysisおよびA1.H Architecture / Technical-Debt Hardeningまで完了しています。現在のCompetition-first次StageはA1.13 Robustness / Uncertaintyです。
+A1.13 Robustness / Uncertaintyまで実装・実データ検証済みです。A1.12 Goldenを保護したまま、7つの事前定義条件 × 16時間帯でCritical Route / Tripの順位安定性と、4目的地 × all / 65+ / 75+ / 85+ のEquity方向安定性を検証します。Competition-firstの次StageはA1.14 Real-world Evidence Anchorです。
 
 ## デモ
 
 現在の公開実証は、大洲市「ぐるりんおおず」の実GTFSを中心に、OSM、100m人口、公式確認した病院・避難所データを組み合わせた公共交通Stress Testです。
 
-Baseline / 右回り運休のAccessibility、06:00〜21:00の時間帯別影響、Route / Trip Criticality、Time-dependent Criticality、病院・避難所へのDestination切替、all / 65+ / 75+ / 85+ のEquityを分析できます。
+Baseline / 右回り運休のAccessibility、06:00〜21:00の時間帯別影響、Route / Trip Criticality、Time-dependent Criticality、病院・避難所へのDestination切替、all / 65+ / 75+ / 85+ のEquityに加え、歩行速度・アクセス徒歩上限・乗換徒歩上限を変えたA1.13 Robustness / Uncertaintyを確認できます。Robustnessは確率や合成スコアではなく、事前定義条件のうち何条件で基準結論が維持されたかと、順位・方向が変わる境界条件をそのまま表示します。
 
 画面の基本操作は、平常時を見る → 止めてみる → 何が困る？ → どう戻す？ → どこが重要？です。道路、鉄道、航路、港湾、物流等は長期構想として保持しますが、未実装・未実証の機能を現在の完成機能として扱いません。
 
@@ -75,6 +75,7 @@ Aは公式観測・実績、Bは公式統計加工、Cはモデル推計、Dは�
 
 - [Development Roadmap](ROADMAP.md)
 - [Competition Judging Strategy](docs/COMPETITION_JUDGING_STRATEGY.md)
+- [A1.13 Robustness / Uncertainty](docs/A1_13_ROBUSTNESS_UNCERTAINTY.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data Availability Matrix](docs/DATA_AVAILABILITY_MATRIX.md)
 - [Model Method](docs/MODEL_METHOD.md)

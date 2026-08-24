@@ -1,0 +1,91 @@
+.robustness-card .robustness-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.robustness-card .robustness-kpi {
+  padding: 14px;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.robustness-card .robustness-kpi span,
+.robustness-card .robustness-kpi small {
+  display: block;
+}
+
+.robustness-card .robustness-kpi strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 1.35rem;
+}
+
+.robustness-card .robustness-table-scroll {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+
+.robustness-card .robustness-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.robustness-card .robustness-table th,
+.robustness-card .robustness-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line, #d8dee8);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.88rem;
+}
+
+.robustness-card .robustness-table th {
+  white-space: nowrap;
+}
+
+.robustness-card .robustness-section-title {
+  margin: 20px 0 8px;
+  font-size: 1rem;
+}
+
+.robustness-card .robustness-boundaries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.robustness-card .robustness-boundary {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+}
+
+.robustness-card .robustness-boundary.stable {
+  font-weight: 700;
+}
+
+.robustness-card .robustness-note {
+  margin-top: 12px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .robustness-card .robustness-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .robustness-card .robustness-kpis {
+    grid-template-columns: 1fr;
+  }
+}

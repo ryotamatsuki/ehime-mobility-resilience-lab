@@ -55,6 +55,7 @@ jobs:
           test -f web/a1_11.css
           test -f web/a1_11_runtime.js
           test -f web/a1_12.css
+          test -f web/a1_13.css
           node --check web/app.js
           node --check web/a1_10_runtime.js
           node --check web/a1_11_runtime.js
@@ -62,6 +63,7 @@ jobs:
           node web/tests/a1_10_smoke.js web
           node web/tests/a1_11_smoke.js web
           node web/tests/a1_12_smoke.js web
+          node web/tests/a1_13_smoke.js web
 
   a1_source_probe:
     runs-on: ubuntu-latest
@@ -107,19 +109,19 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Build A1.12 vulnerable population equity analysis
+      - name: Build A1.13 robustness / uncertainty analysis
         run: |
           for attempt in 1 2 3; do
-            if PYTHONPATH=src python scripts/build_network/build_a1_12.py --output outputs/a1_12; then break; fi
+            if PYTHONPATH=src python scripts/build_network/build_a1_13.py --output outputs/a1_13; then break; fi
             if [ "$attempt" -eq 3 ]; then exit 1; fi
             sleep $((attempt * 10))
           done
-      - name: Validate A1.12 result contract
+      - name: Validate protected A1.12 predecessor result contract
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          root = Path('outputs/a1_12')
+          root = Path('outputs/a1_13/a1_12')
           result = json.loads((root / 'summary.json').read_text())
           equity = json.loads((root / 'equity_summary.json').read_text())
           geo = json.loads((root / 'vulnerable_population_access.geojson').read_text())
@@ -172,11 +174,13 @@ jobs:
           }, ensure_ascii=False, indent=2))
           PY
       - name: Golden regression against pre-hardening A1.12 main
-        run: python scripts/validate/check_a1_12_golden.py --output outputs/a1_12
+        run: python scripts/validate/check_a1_12_golden.py --output outputs/a1_13/a1_12
+      - name: Validate A1.13 robustness result contract
+        run: python scripts/validate/check_a1_13.py --output outputs/a1_13
       - name: Regression smoke A1.11 capability without stage spoofing
         run: |
           rm -rf _site
-          python scripts/export_web/build_a1_11_site.py --source outputs/a1_12 --destination _site
+          python scripts/export_web/build_a1_11_site.py --source outputs/a1_13/a1_12 --destination _site
           python scripts/export_web/apply_a1_11_ui.py --site _site
           node --check _site/app.js
           node --check _site/a1_10_runtime.js
@@ -191,50 +195,61 @@ jobs:
           assert manifest['result_stage'] == 'A1.12'
           assert manifest['ui_release_stage'] == 'A1.11'
           PY
-      - name: Build A1.12 planning canvas
+      - name: Build A1.13 planning canvas
         run: |
-          python scripts/export_web/build_a1_12_site.py --source outputs/a1_12 --destination _site
-          python scripts/export_web/apply_a1_12_ui.py --site _site
-      - name: Smoke generated A1.12 site
+          python scripts/export_web/build_a1_13_site.py --source outputs/a1_13 --destination _site
+          python scripts/export_web/apply_a1_13_ui.py --site _site
+      - name: Smoke generated A1.13 site
         run: |
           node --check _site/app.js
           node --check _site/a1_10_runtime.js
           node --check _site/a1_11_runtime.js
-          node web/tests/a1_12_smoke.js _site
+          node web/tests/a1_13_smoke.js _site
           test -f _site/data/equity_summary.json
           test -f _site/data/vulnerable_population_access.geojson
           test -f _site/data/time_dependent_criticality.json
           test -f _site/data/shelters.geojson
+          test -f _site/data/robustness_summary.json
+          test -f _site/data/robustness_cases.json
           test ! -e _site/data/official_medical.xlsx
           test ! -e _site/data/ozu_shelters.xlsx
           test -z "$(find _site -type f \( -iname '*.zip' -o -iname '*.xlsx' -o -iname '*.xls' \) -print -quit)"
           python - <<'PY'
           import json
           from pathlib import Path
+          summary = json.loads(Path('_site/data/summary.json').read_text())
           manifest = json.loads(Path('_site/data/manifest.json').read_text())
+          robustness = json.loads(Path('_site/data/robustness_summary.json').read_text())
+          assert summary['stage'] == 'A1.13'
           assert manifest['stage'] == 'A1.3'
-          assert manifest['result_stage'] == 'A1.12'
-          assert manifest['analysis_result_stage'] == 'A1.12'
-          assert manifest['ui_release_stage'] == 'A1.12'
+          assert manifest['result_stage'] == 'A1.13'
+          assert manifest['analysis_result_stage'] == 'A1.13'
+          assert manifest['ui_release_stage'] == 'A1.13'
+          assert robustness['case_count'] == 7
+          assert robustness['case_slot_combinations'] == 112
+          assert robustness['composite_score'] is False
           required = [
               'destination-switcher', 'time-dependent-route-criticality',
               'time-dependent-trip-criticality', 'hourly-criticality-matrix',
               'vulnerable-population-65plus', 'vulnerable-population-75plus',
               'vulnerable-population-85plus', 'equity-gap-metrics',
               'equity-public-geojson', 'current-official-age-context',
+              'robustness-case-registry', 'route-ranking-stability',
+              'trip-ranking-stability', 'equity-direction-stability',
+              'robustness-boundary-conditions', 'no-composite-robustness-score',
           ]
           assert all(item in manifest['ui_capabilities'] for item in required)
           html = Path('_site/index.html').read_text()
           app = Path('_site/app.js').read_text()
-          assert 'VULNERABLE POPULATION / EQUITY' in html
-          assert 'data-ui-stage="A1.12"' in html
+          assert 'ROBUSTNESS / UNCERTAINTY' in html
+          assert 'data-ui-stage="A1.13"' in html
           assert 'state.summary.stage !== state.manifest.result_stage' in app
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: a1-12-planning-canvas
+          name: a1-13-planning-canvas
           path: |
-            outputs/a1_12
+            outputs/a1_13
             _site
           if-no-files-found: error
       - uses: actions/configure-pages@v5
