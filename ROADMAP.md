@@ -10,7 +10,7 @@ Competition Strategyの判断根拠・審査員別観点・P0/P1/P2 blockerのSi
 
 ## 1. 現在地
 
-A0 Foundation と A1 の公共交通レジリエンス分析は、A1.12 および A1.H まで完了している。
+A0 Foundation と A1 の公共交通レジリエンス分析は、A1.13 Robustness / Uncertaintyまで完了している。
 
 ### 完了済み
 
@@ -28,8 +28,11 @@ A0 Foundation と A1 の公共交通レジリエンス分析は、A1.12 およ�
 - [x] A1.11 — Time-dependent Criticality
 - [x] A1.12 — Vulnerable Population / Equity Analysis
 - [x] A1.H — Architecture / Technical-Debt Hardening
+- [x] A1.13 — Robustness / Uncertainty
 
 A1.H では、Golden regression、stage spoofing 除去、export contract 統合、Ruff、strict zip checks、process-local source cache 等を追加し、A1.12 のモデル値を変更せずに再現性と保守性を強化した。
+
+A1.13 では、A1.12 Goldenを保護したまま7つの事前定義one-at-a-time条件を全件評価し、06:00〜21:00の16時間帯でRoute / Trip Criticalityの順位安定性、4目的地 × 65+ / 75+ / 85+ のEquity gap方向安定性を検証した。基準route `11` はTop 1を4/7条件、Top 3を7/7条件で維持した一方、trip-level順位や一部Equity指標には明示的な境界条件が確認された。詳細は `docs/A1_13_ROBUSTNESS_UNCERTAINTY.md` を参照する。
 
 ## 2. 2026 Competition-first 優先ロードマップ
 
@@ -37,8 +40,8 @@ A1.H では、Golden regression、stage spoofing 除去、export contract 統合
 
 実行優先順序は次のとおりとする。
 
-1. A1.13 Robustness / Uncertainty
-2. A1.14 Real-world Evidence Anchor
+1. ~~A1.13 Robustness / Uncertainty~~ — **完了**
+2. A1.14 Real-world Evidence Anchor — **NEXT**
 3. A1.15 Recovery Scenario Lab
 4. Representative Finding consolidation（A5.C着手前Gate）
 5. A5.C Competition Mode UI
@@ -58,42 +61,59 @@ A1.11 / A1.12 で得られた Critical Route / Trip、時間帯、年齢層別�
 
 Competition blocker: **P1 — Robustness / Uncertainty**
 
-### 原則
+### 固定した感度分析設計
 
-- 新しい「Robustness Score」のようなブラックボックス合成指標は作らない。
-- 各条件で結論が維持されたかをそのまま表示する。
-- A1.12 Golden Baseline は変更しない。
-- Sensitivity parameter の変更と、データ更新による drift を区別する。
-- 全条件を機械的に評価し、都合のよい条件だけを選ばない。
+A1.13は以下7条件を事前登録し、都合のよい条件だけを選ばず全件を同一コードパスで評価する。
 
-### 感度分析候補
+- `baseline`: 4.8 km/h / access 20分 / transfer 10分
+- `walk_speed_3_6`: 歩行速度 3.6 km/h
+- `walk_speed_1_8`: 歩行速度 1.8 km/h（0.5 m/s boundary sensitivity）
+- `access_walk_10`: 初期access徒歩上限10分
+- `access_walk_30`: 初期access徒歩上限30分
+- `transfer_walk_5`: 乗換徒歩上限5分
+- `transfer_walk_15`: 乗換徒歩上限15分
 
-- 徒歩速度
-- 徒歩アクセス上限
-- 徒歩乗換距離
-- 出発時刻 / 時間帯
-- Accessibility threshold
-- 人口グループ（all / 65+ / 75+ / 85+）
-- 目的地集合（hospital / emergency / general / welfare）
+非baseline条件はbaselineから**ちょうど1パラメータだけ**変更するOAT契約とし、実行時validatorで複数パラメータ同時変更、誤った`varied_parameter` / `varied_value`、重複parameter setを拒否する。
 
-### 期待する出力例
+出発時刻、人口group、destinationは後付けで選択する感度パラメータにはせず、以下を全件評価する。
 
-- 「12条件中11条件で同じ route が Top 3」
-- 「85+ の影響率が全人口より高い方向は 12/12 条件で維持」
-- 「徒歩速度 0.5 m/s の条件のみ順位が入れ替わる」
-- 「結論が不安定になる境界条件」を明示
+- 06:00〜21:00の16時間帯
+- all / 65+ / 75+ / 85+
+- hospital / emergency / general / welfare
 
-### Release Gate
+A1.6のtransfer buffer 1分、A1.11のhospital criticality、A1.12の08:00 Equity reference、右回り停止D stress-test、既存ranking rule等は固定する。1.8 km/hはモデル境界条件であり、特定年齢層の実歩行速度を主張するものではない。
 
-- [ ] Sensitivity parameter と範囲を文書化
-- [ ] 全条件を同一コードパスで再計算
-- [ ] ベースライン A1.12 Golden PASS
-- [ ] route / trip ranking stability を保存
-- [ ] equity direction stability を保存
-- [ ] 条件ごとの差分 provenance を保存
-- [ ] UI では合成スコアを作らず条件別結果を説明可能に表示
-- [ ] pytest / Ruff / source probe / generated-site smoke PASS
-- [ ] Section 11.1 Mandatory Competition Gate PASS
+### 確認された主要結果
+
+- A1.11 / A1.12 baseline equivalence: PASS
+- Critical Route `11`: Top 1 = 4/7、Top 3 = 7/7
+- Critical Trip `11+0+毎日+3`: Top 1 = 4/7、Top 3 = 5/7
+- route Top 1が変わる条件: `walk_speed_3_6`, `walk_speed_1_8`, `access_walk_10`
+- slower-walking 2条件ではroute `12`がday-level Top 1
+- hospital 85+ mean-time degradation gap: positive 7/7
+- hospital 85+ >1分affected-share gap: positive 6/7、`walk_speed_1_8`のみnegative
+- recorded boundary cases: `walk_speed_3_6`, `walk_speed_1_8`, `access_walk_10`
+
+これらは確率、信頼区間、統計的有意性、故障確率ではない。単一のRobustness Scoreも生成しない。
+
+### Release Gate — CLOSED
+
+- [x] Sensitivity parameter と範囲を文書化
+- [x] 全条件を同一コードパスで再計算
+- [x] OAT case contractを実行時validatorとunit testで固定
+- [x] ベースライン A1.12 Golden PASS
+- [x] route / trip ranking stability を保存
+- [x] equity direction stability を保存
+- [x] 条件ごとの差分 provenance を保存
+- [x] UI では合成スコアを作らず条件別結果を説明可能に表示
+- [x] pytest / Ruff / source probe / generated-site smoke PASS
+- [x] Section 11.1 Mandatory Competition Gate PASS
+
+Final verified PR head: `4677ff2d7d394e32abb5e91906650ea11a4b3062`
+
+Final PR workflow: `32674842857` / run #266 — SUCCESS
+
+Merged by PR #15 to main as `98ea3d2eb604b83c2419ad63d66a37cddf6ab3a2`.
 
 ---
 
@@ -355,7 +375,7 @@ Phase B が実装されなくても Phase A / Competition Release は完成品�
 5. 既存機能で代替できないか
 6. 技術的面白さだけを理由にしていないか
 
-Competition Release までは、A2/A3/A4 の大規模実装より A1.13〜A1.16 / A5.C を優先する。
+Competition Release までは、A2/A3/A4 の大規模実装より A1.14〜A1.16 / A5.C を優先する。
 
 ### 11.1 Mandatory Competition Gate
 
@@ -384,8 +404,8 @@ Competition Release までは、A2/A3/A4 の大規模実装より A1.13〜A1.16 
 
 ## 12. 現在の次アクション
 
-**NEXT: A1.13 Robustness / Uncertainty**
+**NEXT: A1.14 Real-world Evidence Anchor**
 
-最初に Sensitivity parameter、base condition、評価対象 conclusion、出力 contract、Golden 非変更条件を固定し、その後に実装へ入る。
+A1.13で「どの結論が仮定変更に耐えるか／どこで変わるか」を固定できたため、次は「なぜその停止シナリオを検証するのか」を実在する一次資料・運休・道路規制・防災計画・移動ニーズ等へAnchorする。
 
-A1.13完了時は、通常のRelease GateだけでなくSection 11.1 Mandatory Competition Gateを明示的に記録する。
+最初にEvidence source、事実とD stress-testの因果を切り分けるルール、provenance contract、Reality Evidence Cardの表示契約を固定してから実装へ入る。
